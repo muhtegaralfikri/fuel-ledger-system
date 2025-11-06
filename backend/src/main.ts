@@ -4,10 +4,11 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 // Import Swagger
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import { ValidationPipe } from '@nestjs/common'; // <-- Impor
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-
+  app.useGlobalPipes(new ValidationPipe()); // <-- TAMBAHKAN INI
   // --- Mulai Konfigurasi Swagger ---
   const config = new DocumentBuilder()
     .setTitle('Fuel Ledger System API')

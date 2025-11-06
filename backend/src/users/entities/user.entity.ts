@@ -19,6 +19,9 @@ export class UserEntity {
   @Column({ length: 100, unique: true })
   username: string;
 
+  @Column({ length: 100, unique: true }) // <-- TAMBAHKAN INI
+  email: string; // <-- TAMBAHKAN INI
+
   @Column()
   password: string;
 
