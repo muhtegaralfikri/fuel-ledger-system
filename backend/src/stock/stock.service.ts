@@ -5,7 +5,7 @@ import { Repository } from 'typeorm';
 import { TransactionEntity } from './entities/transaction.entity';
 import { CreateStockInDto } from './dto/create-stock-in.dto';
 import { CreateStockOutDto } from './dto/create-stock-out.dto';
-import { PaginationDto } from '../common/dto/pagination.dto'; // <-- Impor DTO
+import { StockHistoryQueryDto } from './dto/history-query.dto'; // <-- Impor DTO
 // Tipe data 'user' yang disisipkan oleh JwtStrategy
 interface AuthenticatedUser {
   id: string;
@@ -107,13 +107,19 @@ export class StockService {
     return this.transactionRepository.save(newTransaction);
   }
 
-  async getHistory(paginationDto: PaginationDto) {
-    const { page = 1, limit = 10 } = paginationDto;
+  async getHistory(
+    historyQueryDto: StockHistoryQueryDto,
+    user: AuthenticatedUser,
+  ) {
+    const { page = 1, limit = 10, type } = historyQueryDto;
     const skip = (page - 1) * limit; // Kalkulasi 'offset'
+
+    const enforcedType = user.role === 'operasional' ? 'OUT' : type;
 
     // Kita pakai findAndCount untuk mendapatkan data + total data (untuk pagination)
     const [transactions, total] =
       await this.transactionRepository.findAndCount({
+        where: enforcedType ? { type: enforcedType } : undefined,
         relations: ['user'], // Join dengan tabel 'user'
         order: {
           timestamp: 'DESC', // Urutkan dari yang terbaru
@@ -127,7 +133,7 @@ export class StockService {
       id: tx.id,
       timestamp: tx.timestamp,
       type: tx.type,
-      amount: tx.amount,
+      amount: Number(tx.amount),
       description: tx.description,
       user: {
         id: tx.user.id,

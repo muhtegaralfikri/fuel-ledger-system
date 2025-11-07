@@ -10,6 +10,7 @@ import Button from 'primevue/button';
 import Card from 'primevue/card';
 import Divider from 'primevue/divider';
 import { useToast } from 'primevue/usetoast';
+import TransactionHistory from '@/components/TransactionHistory.vue';
 
 const authStore = useAuthStore();
 const stockStore = useStockStore();
@@ -19,6 +20,7 @@ const toast = useToast();
 const amount = ref<number | null>(null);
 const description = ref('');
 const loading = ref(false);
+const stockHistoryRef = ref<InstanceType<typeof TransactionHistory> | null>(null);
 
 const userMeta = computed(() => [
   {
@@ -65,6 +67,7 @@ const handleSubmit = async () => {
     });
 
     stockStore.refreshAfterTransaction();
+    stockHistoryRef.value?.refresh();
 
     // Reset form
     amount.value = null;
@@ -84,68 +87,75 @@ const handleSubmit = async () => {
 
 <template>
   <section class="page-shell">
-    <Card class="form-shell dashboard-card">
-      <template #title>
-        <div>
-          <p class="eyebrow mb-2">Dashboard Admin</p>
-          <h2 class="m-0">Tambah Stok Bahan Bakar</h2>
-        </div>
-      </template>
-
-      <template #content>
-        <p class="dashboard-subtitle">
-          Input pembelian atau penyesuaian stok terbaru. Sistem otomatis mencatat audit trail
-          beserta pengguna yang melakukan perubahan.
-        </p>
-
-        <div class="meta-grid">
-          <article class="meta-tile" v-for="meta in userMeta" :key="meta.label">
-            <span class="meta-label">
-              <i :class="meta.icon" />
-              {{ meta.label }}
-            </span>
-            <div class="meta-value">{{ meta.value }}</div>
-          </article>
-        </div>
-
-        <Divider />
-
-        <form @submit.prevent="handleSubmit" class="form-stack">
+    <div class="form-shell">
+      <Card class="dashboard-card">
+        <template #title>
           <div>
-            <label for="amount">Jumlah (Liter)</label>
-            <InputNumber
-              id="amount"
-              v-model="amount"
-              placeholder="Masukkan jumlah liter"
-              mode="decimal"
-              :minFractionDigits="2"
-              :maxFractionDigits="2"
-              class="w-full"
-            />
+            <p class="eyebrow mb-2">Dashboard Admin</p>
+            <h2 class="m-0">Tambah Stok Bahan Bakar</h2>
+          </div>
+        </template>
+
+        <template #content>
+          <p class="dashboard-subtitle">
+            Input pembelian atau penyesuaian stok terbaru. Sistem otomatis mencatat audit trail
+            beserta pengguna yang melakukan perubahan.
+          </p>
+
+          <div class="meta-grid">
+            <article class="meta-tile" v-for="meta in userMeta" :key="meta.label">
+              <span class="meta-label">
+                <i :class="meta.icon" />
+                {{ meta.label }}
+              </span>
+              <div class="meta-value">{{ meta.value }}</div>
+            </article>
           </div>
 
-          <div>
-            <label for="description">Deskripsi</label>
-            <Textarea
-              id="description"
-              v-model="description"
-              rows="3"
-              autoResize
-              placeholder="Contoh: Pembelian premium 5 KL dari Pertamina"
-              class="w-full"
-            />
-          </div>
+          <Divider />
 
-          <Button
-            type="submit"
-            label="Tambah Stok"
-            icon="pi pi-plus"
-            class="w-full"
-            :loading="loading"
-          />
-        </form>
-      </template>
-    </Card>
+          <form @submit.prevent="handleSubmit" class="form-stack">
+            <div>
+              <label for="amount">Jumlah (Liter)</label>
+              <InputNumber
+                id="amount"
+                v-model="amount"
+                placeholder="Masukkan jumlah liter"
+                mode="decimal"
+                class="w-full"
+              />
+            </div>
+
+            <div>
+              <label for="description">Deskripsi</label>
+              <Textarea
+                id="description"
+                v-model="description"
+                rows="3"
+                autoResize
+                placeholder="Contoh: Pembelian premium 5 KL dari Pertamina"
+                class="w-full"
+              />
+            </div>
+
+            <Button
+              type="submit"
+              label="Tambah Stok"
+              icon="pi pi-plus"
+              class="w-full"
+              :loading="loading"
+            />
+          </form>
+        </template>
+      </Card>
+
+      <TransactionHistory
+        ref="stockHistoryRef"
+        type="IN"
+        title="Riwayat Penambahan Stok"
+        description="Daftar transaksi penambahan stok terbaru untuk mendukung audit trail tim."
+      />
+    </div>
   </section>
 </template>
 

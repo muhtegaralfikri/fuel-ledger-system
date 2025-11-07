@@ -11,7 +11,6 @@ import {
   Request,
   Query, // <-- TAMBAHKAN INI
 } from '@nestjs/common';
-import { PaginationDto } from '../common/dto/pagination.dto';
 import { StockService } from './stock.service';
 import { AuthGuard } from '@nestjs/passport';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -19,6 +18,7 @@ import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 
 import { CreateStockInDto } from './dto/create-stock-in.dto';
 import { CreateStockOutDto } from './dto/create-stock-out.dto';
+import { StockHistoryQueryDto } from './dto/history-query.dto';
 
 @ApiTags('stock')
 @Controller('stock')
@@ -53,11 +53,12 @@ export class StockController {
 
   @Get('history')
   @ApiBearerAuth() // Butuh token
-  @SetMetadata('roles', ['admin']) // Hanya 'admin'
+  @SetMetadata('roles', ['admin', 'operasional']) // Admin & Operasional
   @UseGuards(AuthGuard('jwt'), RolesGuard) // Terapkan penjaga
   getHistory(
-    @Query() paginationDto: PaginationDto, // <-- Ambil query params
+    @Query() historyQueryDto: StockHistoryQueryDto, // <-- Ambil query params
+    @Request() req,
   ) {
-    return this.stockService.getHistory(paginationDto);
+    return this.stockService.getHistory(historyQueryDto, req.user);
   }
 }

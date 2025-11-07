@@ -11,6 +11,7 @@ import Card from 'primevue/card';
 import Calendar from 'primevue/calendar';
 import Divider from 'primevue/divider';
 import { useToast } from 'primevue/usetoast';
+import TransactionHistory from '@/components/TransactionHistory.vue';
 
 const authStore = useAuthStore();
 const stockStore = useStockStore();
@@ -21,6 +22,7 @@ const date = ref(new Date()); // Default hari ini
 const amount = ref<number | null>(null);
 const description = ref('');
 const loading = ref(false);
+const usageHistoryRef = ref<InstanceType<typeof TransactionHistory> | null>(null);
 
 const userMeta = computed(() => [
   {
@@ -82,6 +84,7 @@ const handleSubmit = async () => {
     });
 
     stockStore.refreshAfterTransaction();
+    usageHistoryRef.value?.refresh();
 
     // Reset form
     amount.value = null;
@@ -102,80 +105,87 @@ const handleSubmit = async () => {
 
 <template>
   <section class="page-shell">
-    <Card class="form-shell dashboard-card">
-      <template #title>
-        <div>
-          <p class="eyebrow mb-2">Dashboard Operasional</p>
-          <h2 class="m-0">Catat Pemakaian Lapangan</h2>
-        </div>
-      </template>
-
-      <template #content>
-        <p class="dashboard-subtitle">
-          Hadirkan bukti pemakaian dengan detail tanggal, jumlah liter, dan keterangan aktivitas.
-          Data otomatis tersinkron ke admin untuk approval stok.
-        </p>
-
-        <div class="meta-grid">
-          <article class="meta-tile" v-for="meta in userMeta" :key="meta.label">
-            <span class="meta-label">
-              <i :class="meta.icon" />
-              {{ meta.label }}
-            </span>
-            <div class="meta-value">{{ meta.value }}</div>
-          </article>
-        </div>
-
-        <Divider />
-
-        <form @submit.prevent="handleSubmit" class="form-stack">
+    <div class="form-shell">
+      <Card class="dashboard-card">
+        <template #title>
           <div>
-            <label for="date">Tanggal Pemakaian</label>
-            <Calendar
-              id="date"
-              v-model="date"
-              dateFormat="dd/mm/yy"
-              showIcon
-              showButtonBar
-              class="w-full"
-            />
+            <p class="eyebrow mb-2">Dashboard Operasional</p>
+            <h2 class="m-0">Catat Pemakaian Lapangan</h2>
+          </div>
+        </template>
+
+        <template #content>
+          <p class="dashboard-subtitle">
+            Hadirkan bukti pemakaian dengan detail tanggal, jumlah liter, dan keterangan aktivitas.
+            Data otomatis tersinkron ke admin untuk approval stok.
+          </p>
+
+          <div class="meta-grid">
+            <article class="meta-tile" v-for="meta in userMeta" :key="meta.label">
+              <span class="meta-label">
+                <i :class="meta.icon" />
+                {{ meta.label }}
+              </span>
+              <div class="meta-value">{{ meta.value }}</div>
+            </article>
           </div>
 
-          <div>
-            <label for="amount">Jumlah Pemakaian (Liter)</label>
-            <InputNumber
-              id="amount"
-              v-model="amount"
-              placeholder="Masukkan jumlah liter"
-              mode="decimal"
-              :minFractionDigits="2"
-              :maxFractionDigits="2"
-              class="w-full"
-            />
-          </div>
+          <Divider />
 
-          <div>
-            <label for="description">Uraian Pemakaian (Wajib)</label>
-            <Textarea
-              id="description"
-              v-model="description"
-              rows="3"
-              autoResize
-              placeholder="Contoh: Pemakaian untuk Kapal X"
-              class="w-full"
-            />
-          </div>
+          <form @submit.prevent="handleSubmit" class="form-stack">
+            <div>
+              <label for="date">Tanggal Pemakaian</label>
+              <Calendar
+                id="date"
+                v-model="date"
+                dateFormat="dd/mm/yy"
+                showIcon
+                showButtonBar
+                class="w-full"
+              />
+            </div>
 
-          <Button
-            type="submit"
-            label="Kirim Data Pemakaian"
-            icon="pi pi-send"
-            class="w-full"
-            :loading="loading"
-          />
-        </form>
-      </template>
-    </Card>
+            <div>
+              <label for="amount">Jumlah Pemakaian (Liter)</label>
+              <InputNumber
+                id="amount"
+                v-model="amount"
+                placeholder="Masukkan jumlah liter"
+                mode="decimal"
+                class="w-full"
+              />
+            </div>
+
+            <div>
+              <label for="description">Uraian Pemakaian (Wajib)</label>
+              <Textarea
+                id="description"
+                v-model="description"
+                rows="3"
+                autoResize
+                placeholder="Contoh: Pemakaian untuk Kapal X"
+                class="w-full"
+              />
+            </div>
+
+            <Button
+              type="submit"
+              label="Kirim Data Pemakaian"
+              icon="pi pi-send"
+              class="w-full"
+              :loading="loading"
+            />
+          </form>
+        </template>
+      </Card>
+
+      <TransactionHistory
+        ref="usageHistoryRef"
+        type="OUT"
+        title="Riwayat Pemakaian"
+        description="Pantau catatan pemakaian terakhir untuk memastikan aktivitas lapangan tercatat rapi."
+      />
+    </div>
   </section>
 </template>
 
