@@ -36,7 +36,7 @@ const handleLogin = async () => {
     <div class="auth-page__inner">
       <div class="auth-page__hero">
         <p class="eyebrow">Fuel Ledger System</p>
-        <h1>Catat stok & pemakaian BBM dengan presisi.</h1>
+        <h1>Catat stok & pemakaian bensin dengan presisi.</h1>
         <p class="subtitle">
           Platform terintegrasi untuk tim admin & operasional Bosowa. Data real time,
           approval jelas, audit trail otomatis.
@@ -74,16 +74,13 @@ const handleLogin = async () => {
           <form @submit.prevent="handleLogin" class="form-grid">
             <div class="form-field">
               <label for="email">Email</label>
-              <span class="p-input-icon-left w-full">
-                <i class="pi pi-envelope" />
-                <InputText
-                  id="email"
-                  v-model="email"
-                  type="email"
-                  placeholder="admin@example.com"
-                  class="w-full"
-                />
-              </span>
+              <InputText
+                id="email"
+                v-model="email"
+                type="email"
+                placeholder="admin@example.com"
+                class="w-full"
+              />
             </div>
 
             <div class="form-field">
