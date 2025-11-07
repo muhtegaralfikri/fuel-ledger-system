@@ -1,38 +1,53 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
+import { useAuthStore } from '@/stores/auth.store'; // <-- Impor Pinia Store
 
 // Impor komponen PrimeVUE
 import Menubar from 'primevue/menubar';
 import Button from 'primevue/button';
+import Avatar from 'primevue/avatar';
 
 const router = useRouter();
+const authStore = useAuthStore(); // <-- Gunakan store
 
 // Definisikan item menu.
-// 'Beranda' akan mengarah ke path '/'
 const menuItems = ref([
   {
     label: 'Beranda',
     icon: 'pi pi-fw pi-home',
     command: () => {
-      router.push('/'); // Navigasi ke Halaman Beranda
+      router.push('/');
     },
   },
-  // Nanti kita bisa tambahkan menu lain di sini
-  // {
-  //   label: 'Dashboard',
-  //   icon: 'pi pi-fw pi-user',
-  //   command: () => {
-  //     router.push('/dashboard');
-  //   },
-  // },
+  // Menu Dashboard Admin (hanya tampil jika admin)
+  {
+    label: 'Dashboard Admin',
+    icon: 'pi pi-fw pi-cog',
+    command: () => {
+      router.push('/admin-dashboard');
+    },
+    visible: () => authStore.isAdmin, // <-- Kunci Reaktif
+  },
+  // Menu Dashboard Operasional (hanya tampil jika operasional)
+  {
+    label: 'Dashboard Operasional',
+    icon: 'pi pi-fw pi-wrench',
+    command: () => {
+      router.push('/ops-dashboard');
+    },
+    visible: () => authStore.isOperasional, // <-- Kunci Reaktif
+  },
 ]);
 
-// Fungsi untuk tombol Login
-// Fungsi untuk tombol Login
+// Navigasi ke Halaman Login
 const goToLogin = () => {
-  // Ganti 'alert' dengan ini:
   router.push('/login');
+};
+
+// Panggil action logout dari store
+const handleLogout = () => {
+  authStore.logout();
 };
 </script>
 
@@ -46,25 +61,39 @@ const goToLogin = () => {
 
     <template #end>
       <Button
+        v-if="!authStore.isAuthenticated"
         label="Log In"
         icon="pi pi-sign-in"
         class="p-button-text p-button-sm"
         @click="goToLogin"
       />
+
+      <div v-if="authStore.isAuthenticated" class="flex align-items-center">
+        <Avatar
+          icon="pi pi-user"
+          shape="circle"
+          class="mr-2"
+        />
+        <span class="mr-3">Halo, {{ authStore.user?.username }}</span>
+        <Button
+          label="Log Out"
+          icon="pi pi-sign-out"
+          class="p-button-text p-button-sm p-button-danger"
+          @click="handleLogout"
+        />
+      </div>
     </template>
   </Menubar>
 </template>
 
 <style scoped>
-/* Sedikit penyesuaian agar rapi */
+/* Style tetap sama */
 .p-menubar {
   border-radius: 0;
   border-bottom: 1px solid var(--surface-d);
-  padding: 0.5rem 1.5rem; /* Beri padding horizontal */
+  padding: 0.5rem 1.5rem;
 }
-
-/* Penyesuaian untuk slot 'start' */
 :deep(.p-menubar-start) {
-  margin-right: auto; /* Mendorong menu item ke kanan */
+  margin-right: auto;
 }
 </style>
