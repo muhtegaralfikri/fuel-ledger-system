@@ -1,5 +1,6 @@
 // /backend/src/stock/stock.service.ts
 import { Injectable, BadRequestException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { TransactionEntity } from './entities/transaction.entity';
@@ -15,10 +16,16 @@ interface AuthenticatedUser {
 
 @Injectable()
 export class StockService {
+  private readonly reportTimezone: string;
+
   constructor(
     @InjectRepository(TransactionEntity)
     private transactionRepository: Repository<TransactionEntity>,
-  ) {}
+    private readonly configService: ConfigService,
+  ) {
+    this.reportTimezone =
+      this.configService.get<string>('APP_TIMEZONE') ?? 'Asia/Makassar';
+  }
 
   /**
    * Endpoint 1: Mengambil 3 data untuk kartu di Beranda.
@@ -38,13 +45,27 @@ export class StockService {
         'currentStock',
       )
       .addSelect(
-        "SUM(CASE WHEN tx.type = 'OUT' AND DATE(tx.timestamp) = CURRENT_DATE THEN tx.amount ELSE 0 END)",
+        `SUM(
+          CASE
+            WHEN tx.type = 'OUT'
+              AND DATE(timezone(:tz, tx.timestamp)) = DATE(timezone(:tz, CURRENT_TIMESTAMP))
+            THEN tx.amount
+            ELSE 0
+          END
+        )`,
         'todayUsage',
       )
       .addSelect(
-        "SUM(CASE WHEN DATE(tx.timestamp) < CURRENT_DATE THEN (CASE WHEN tx.type = 'IN' THEN tx.amount ELSE -tx.amount END) ELSE 0 END)",
+        `SUM(
+          CASE
+            WHEN DATE(timezone(:tz, tx.timestamp)) < DATE(timezone(:tz, CURRENT_TIMESTAMP))
+            THEN (CASE WHEN tx.type = 'IN' THEN tx.amount ELSE -tx.amount END)
+            ELSE 0
+          END
+        )`,
         'todayInitialStock',
       )
+      .setParameter('tz', this.reportTimezone)
       .getRawOne(); // .getRawOne() karena ini adalah query agregat
 
     // getRawOne() mengembalikan string. Kita ubah ke number (float).
