@@ -39,7 +39,8 @@ const userMeta = computed(() => [
     label: 'Tanggal Input',
     value: new Intl.DateTimeFormat('id-ID', {
       dateStyle: 'medium',
-      timeStyle: 'short'
+      timeStyle: 'short',
+      timeZone: 'Asia/Makassar'
     }).format(new Date()),
     icon: 'pi pi-calendar'
   }

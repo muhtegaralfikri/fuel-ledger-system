@@ -31,7 +31,7 @@ interface HistoryResponse {
   };
 }
 
-const defaultTimeZone = 'Asia/Makassar';
+const MAKASSAR_TIME_ZONE = 'Asia/Makassar';
 
 const props = withDefaults(
   defineProps<{
@@ -44,16 +44,12 @@ const props = withDefaults(
   {
     description: '',
     limit: 10,
-    timeZone: defaultTimeZone,
+    timeZone: MAKASSAR_TIME_ZONE,
   },
 );
 
-const resolvedTimeZone = computed(
-  () =>
-    props.timeZone ||
-    Intl.DateTimeFormat().resolvedOptions().timeZone ||
-    defaultTimeZone,
-);
+// Always use Makassar timezone unless component caller overrides via prop.
+const resolvedTimeZone = computed(() => props.timeZone || MAKASSAR_TIME_ZONE);
 
 const history = ref<TransactionHistoryItem[]>([]);
 const loading = ref(false);
