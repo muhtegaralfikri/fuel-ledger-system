@@ -8,6 +8,11 @@ import { ValidationPipe } from '@nestjs/common'; // <-- Impor
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  app.setGlobalPrefix('api');
+  app.enableCors({
+    origin: ['http://localhost:5173', 'http://127.0.0.1:5173'],
+    credentials: true
+  });
   app.useGlobalPipes(new ValidationPipe()); // <-- TAMBAHKAN INI
   // --- Mulai Konfigurasi Swagger ---
   const config = new DocumentBuilder()
