@@ -223,16 +223,47 @@ const exportToExcel = () => {
     return;
   }
 
-  const worksheetData = history.value.map((item, index) => ({
-    No: index + 1,
-    Tanggal: formatDate(item.timestamp),
-    Jenis: item.type === 'IN' ? 'Tambah Stok' : 'Pemakaian',
-    'Jumlah (Liter)': item.amount,
-    Petugas: item.user?.username || '-',
-    Keterangan: item.description || '-',
-  }));
+  const now = new Date();
+  const exportTime = new Intl.DateTimeFormat('id-ID', {
+    dateStyle: 'full',
+    timeStyle: 'medium',
+    timeZone: resolvedTimeZone.value,
+  }).format(now);
 
-  const worksheet = XLSX.utils.json_to_sheet(worksheetData);
+  const periodDescription = appliedRange.value
+    ? `Periode: ${activeRangeLabel.value}`
+    : 'Periode: Semua data';
+
+  const rows: (string | number)[][] = [];
+  const titleRow =
+    props.title ||
+    (props.type === 'IN'
+      ? 'Riwayat Penambahan Stok'
+      : 'Riwayat Pemakaian Bahan Bakar');
+
+  rows.push([titleRow]);
+  rows.push([periodDescription]);
+  rows.push([`Diekspor: ${exportTime}`]);
+  rows.push([]);
+  rows.push(['No', 'Tanggal', 'Petugas', 'Jumlah (L)', 'Keterangan']);
+
+  let totalAmount = 0;
+  history.value.forEach((item, index) => {
+    const amount = Number(item.amount) || 0;
+    totalAmount += amount;
+    rows.push([
+      index + 1,
+      formatDate(item.timestamp),
+      item.user?.username || '-',
+      amount,
+      item.description || '-',
+    ]);
+  });
+
+  rows.push([]);
+  rows.push(['', 'Total', '', totalAmount, '']);
+
+  const worksheet = XLSX.utils.aoa_to_sheet(rows);
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, 'Riwayat');
 

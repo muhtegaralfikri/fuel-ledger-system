@@ -19,6 +19,8 @@ import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { CreateStockInDto } from './dto/create-stock-in.dto';
 import { CreateStockOutDto } from './dto/create-stock-out.dto';
 import { StockHistoryQueryDto } from './dto/history-query.dto';
+import { StockTrendQueryDto } from './dto/trend-query.dto';
+import { DailyInOutTrendDto } from './dto/inout-trend.dto';
 
 @ApiTags('stock')
 @Controller('stock')
@@ -60,5 +62,15 @@ export class StockController {
     @Request() req,
   ) {
     return this.stockService.getHistory(historyQueryDto, req.user);
+  }
+
+  @Get('trend')
+  getTrend(@Query() trendQueryDto: StockTrendQueryDto) {
+    return this.stockService.getDailyStockTrend(trendQueryDto);
+  }
+
+  @Get('trend/in-out')
+  getInOutTrend(@Query() trendQueryDto: StockTrendQueryDto) {
+    return this.stockService.getDailyInOutTrend(trendQueryDto);
   }
 }

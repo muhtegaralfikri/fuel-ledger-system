@@ -7,6 +7,9 @@ import { TransactionEntity } from './entities/transaction.entity';
 import { CreateStockInDto } from './dto/create-stock-in.dto';
 import { CreateStockOutDto } from './dto/create-stock-out.dto';
 import { StockHistoryQueryDto } from './dto/history-query.dto'; // <-- Impor DTO
+import { StockTrendQueryDto } from './dto/trend-query.dto';
+import { StockTrendPointDto, StockTrendResponseDto } from './dto/trend-response.dto';
+import { DailyInOutTrendDto } from './dto/inout-trend.dto';
 // Tipe data 'user' yang disisipkan oleh JwtStrategy
 interface AuthenticatedUser {
   id: string;
@@ -193,5 +196,173 @@ export class StockService {
         totalPages: Math.ceil(total / limit),
       },
     };
+  }
+
+  async getDailyStockTrend(trendQueryDto: StockTrendQueryDto): Promise<StockTrendResponseDto> {
+    const { window, rangeStart, rangeEndExclusive, todayStart } =
+      this.getWindowParams(trendQueryDto);
+
+    const totalBeforeRow = await this.transactionRepository
+      .createQueryBuilder('tx')
+      .select(
+        "COALESCE(SUM(CASE WHEN tx.type = 'IN' THEN tx.amount ELSE -tx.amount END), 0)",
+        'total',
+      )
+      .where('tx.timestamp < :rangeStart', {
+        rangeStart: rangeStart.toISOString(),
+      })
+      .getRawOne();
+
+    const startingStock = parseFloat(totalBeforeRow?.total) || 0;
+
+    const transactions = await this.transactionRepository
+      .createQueryBuilder('tx')
+      .select(['tx.timestamp', 'tx.type', 'tx.amount'])
+      .where('tx.timestamp >= :rangeStart AND tx.timestamp < :rangeEnd', {
+        rangeStart: rangeStart.toISOString(),
+        rangeEnd: rangeEndExclusive.toISOString(),
+      })
+      .orderBy('tx.timestamp', 'ASC')
+      .getMany();
+
+    const dateKeyFormatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: this.reportTimezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+
+    const labelFormatter = new Intl.DateTimeFormat('id-ID', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      timeZone: this.reportTimezone,
+    });
+
+    const dailyDeltas = new Map<string, number>();
+    transactions.forEach((tx) => {
+      const key = dateKeyFormatter.format(tx.timestamp);
+      const delta = tx.type === 'IN' ? Number(tx.amount) : -Number(tx.amount);
+      dailyDeltas.set(key, (dailyDeltas.get(key) ?? 0) + delta);
+    });
+
+    const points: StockTrendPointDto[] = [];
+    let runningStock = startingStock;
+
+    for (let i = 0; i < window; i += 1) {
+      const dayStart = this.addDays(rangeStart, i);
+      const key = dateKeyFormatter.format(dayStart);
+      const delta = dailyDeltas.get(key) ?? 0;
+      const openingStock = runningStock;
+      runningStock += delta;
+      points.push({
+        date: key,
+        label: labelFormatter.format(dayStart),
+        openingStock,
+        closingStock: runningStock,
+        delta,
+      });
     }
+
+    return {
+      timezone: this.reportTimezone,
+      startDate: rangeStart.toISOString(),
+      endDate: rangeEndExclusive.toISOString(),
+      days: window,
+      points,
+    };
+  }
+
+  async getDailyInOutTrend(
+    trendQueryDto: StockTrendQueryDto,
+  ): Promise<DailyInOutTrendDto> {
+    const { window, rangeStart, rangeEndExclusive } =
+      this.getWindowParams(trendQueryDto);
+
+    const transactions = await this.transactionRepository
+      .createQueryBuilder('tx')
+      .select(['tx.timestamp', 'tx.type', 'tx.amount'])
+      .where('tx.timestamp >= :rangeStart AND tx.timestamp < :rangeEnd', {
+        rangeStart: rangeStart.toISOString(),
+        rangeEnd: rangeEndExclusive.toISOString(),
+      })
+      .orderBy('tx.timestamp', 'ASC')
+      .getMany();
+
+    const dateKeyFormatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: this.reportTimezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+
+    const labelFormatter = new Intl.DateTimeFormat('id-ID', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      timeZone: this.reportTimezone,
+    });
+
+    const aggregates = new Map<string, { in: number; out: number }>();
+
+    transactions.forEach((tx) => {
+      const key = dateKeyFormatter.format(tx.timestamp);
+      const bucket = aggregates.get(key) ?? { in: 0, out: 0 };
+      if (tx.type === 'IN') {
+        bucket.in += Number(tx.amount);
+      } else {
+        bucket.out += Number(tx.amount);
+      }
+      aggregates.set(key, bucket);
+    });
+
+    const points: DailyInOutTrendDto['points'] = [];
+    for (let i = 0; i < window; i += 1) {
+      const dayStart = this.addDays(rangeStart, i);
+      const key = dateKeyFormatter.format(dayStart);
+      const agg = aggregates.get(key) ?? { in: 0, out: 0 };
+      points.push({
+        date: key,
+        label: labelFormatter.format(dayStart),
+        totalIn: agg.in,
+        totalOut: agg.out,
+      });
+    }
+
+    return {
+      timezone: this.reportTimezone,
+      startDate: rangeStart.toISOString(),
+      endDate: rangeEndExclusive.toISOString(),
+      days: window,
+      points,
+    };
+  }
+
+  private getWindowParams(trendQueryDto: StockTrendQueryDto) {
+    const window = Math.min(Math.max(trendQueryDto?.days ?? 7, 1), 30);
+    const todayStart = this.getTimezoneStartOfDay(new Date());
+    const rangeStart = this.addDays(todayStart, -(window - 1));
+    const rangeEndExclusive = this.addDays(todayStart, 1);
+    return { window, todayStart, rangeStart, rangeEndExclusive };
+  }
+
+  private getTimezoneStartOfDay(date: Date) {
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: this.reportTimezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+    const parts = formatter.formatToParts(date);
+    const year = Number(parts.find((p) => p.type === 'year')?.value);
+    const month = Number(parts.find((p) => p.type === 'month')?.value);
+    const day = Number(parts.find((p) => p.type === 'day')?.value);
+    return new Date(Date.UTC(year, month - 1, day));
+  }
+
+  private addDays(date: Date, amount: number) {
+    const clone = new Date(date);
+    clone.setUTCDate(clone.getUTCDate() + amount);
+    return clone;
+  }
 }
