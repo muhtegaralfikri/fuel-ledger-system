@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { useAuthStore } from '@/stores/auth.store';
 import apiClient from '@/services/api';
 
@@ -7,8 +7,9 @@ import apiClient from '@/services/api';
 import InputNumber from 'primevue/inputnumber';
 import Textarea from 'primevue/textarea';
 import Button from 'primevue/button';
-import Panel from 'primevue/panel';
-import { useToast } from 'primevue/usetoast'; // Impor Toast
+import Card from 'primevue/card';
+import Divider from 'primevue/divider';
+import { useToast } from 'primevue/usetoast';
 
 const authStore = useAuthStore();
 const toast = useToast(); // Inisialisasi Toast
@@ -17,6 +18,24 @@ const toast = useToast(); // Inisialisasi Toast
 const amount = ref<number | null>(null);
 const description = ref('');
 const loading = ref(false);
+
+const userMeta = computed(() => [
+  {
+    label: 'Hak Akses',
+    value: authStore.user?.role?.toUpperCase() || 'ADMIN',
+    icon: 'pi pi-shield'
+  },
+  {
+    label: 'Pengguna',
+    value: authStore.user?.username || '-',
+    icon: 'pi pi-user'
+  },
+  {
+    label: 'Status Stok',
+    value: 'Realtime',
+    icon: 'pi pi-database'
+  }
+]);
 
 const handleSubmit = async () => {
   if (!amount.value || amount.value <= 0) {
@@ -61,16 +80,35 @@ const handleSubmit = async () => {
 </script>
 
 <template>
-  <div class="grid justify-content-center p-4">
-    <div class="col-12 md:col-8 lg:col-6">
-      <Panel header="Dashboard Admin">
-        <p class="mb-4">
-          Selamat datang,
-          <strong>{{ authStore.user?.username }}</strong
-          >. Gunakan form ini untuk menambah stok bahan bakar.
+  <section class="page-shell">
+    <Card class="form-shell dashboard-card">
+      <template #title>
+        <div>
+          <p class="eyebrow mb-2">Dashboard Admin</p>
+          <h2 class="m-0">Tambah Stok Bahan Bakar</h2>
+        </div>
+      </template>
+
+      <template #content>
+        <p class="dashboard-subtitle">
+          Input pembelian atau penyesuaian stok terbaru. Sistem otomatis mencatat audit trail
+          beserta pengguna yang melakukan perubahan.
         </p>
-        <form @submit.prevent="handleSubmit" class="p-fluid">
-          <div class="field">
+
+        <div class="meta-grid">
+          <article class="meta-tile" v-for="meta in userMeta" :key="meta.label">
+            <span class="meta-label">
+              <i :class="meta.icon" />
+              {{ meta.label }}
+            </span>
+            <div class="meta-value">{{ meta.value }}</div>
+          </article>
+        </div>
+
+        <Divider />
+
+        <form @submit.prevent="handleSubmit" class="form-stack">
+          <div>
             <label for="amount">Jumlah (Liter)</label>
             <InputNumber
               id="amount"
@@ -79,26 +117,39 @@ const handleSubmit = async () => {
               mode="decimal"
               :minFractionDigits="2"
               :maxFractionDigits="2"
+              class="w-full"
             />
           </div>
-          <div class="field mt-4">
+
+          <div>
             <label for="description">Deskripsi</label>
             <Textarea
               id="description"
               v-model="description"
               rows="3"
-              placeholder="Contoh: Pembelian dari Pertamina"
+              autoResize
+              placeholder="Contoh: Pembelian premium 5 KL dari Pertamina"
+              class="w-full"
             />
           </div>
+
           <Button
             type="submit"
             label="Tambah Stok"
             icon="pi pi-plus"
-            class="mt-4 w-full"
+            class="w-full"
             :loading="loading"
           />
         </form>
-      </Panel>
-    </div>
-  </div>
+      </template>
+    </Card>
+  </section>
 </template>
+
+<style scoped>
+:deep(.p-inputtext),
+:deep(.p-inputnumber-input),
+:deep(.p-inputtextarea) {
+  width: 100%;
+}
+</style>

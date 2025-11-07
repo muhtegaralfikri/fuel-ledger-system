@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { useAuthStore } from '@/stores/auth.store';
 import apiClient from '@/services/api';
 
@@ -7,8 +7,9 @@ import apiClient from '@/services/api';
 import InputNumber from 'primevue/inputnumber';
 import Textarea from 'primevue/textarea';
 import Button from 'primevue/button';
-import Panel from 'primevue/panel';
-import Calendar from 'primevue/calendar'; // <-- Kalender yang kamu minta
+import Card from 'primevue/card';
+import Calendar from 'primevue/calendar';
+import Divider from 'primevue/divider';
 import { useToast } from 'primevue/usetoast';
 
 const authStore = useAuthStore();
@@ -19,6 +20,27 @@ const date = ref(new Date()); // Default hari ini
 const amount = ref<number | null>(null);
 const description = ref('');
 const loading = ref(false);
+
+const userMeta = computed(() => [
+  {
+    label: 'Hak Akses',
+    value: authStore.user?.role?.toUpperCase() || 'OPERASIONAL',
+    icon: 'pi pi-briefcase'
+  },
+  {
+    label: 'Petugas',
+    value: authStore.user?.username || '-',
+    icon: 'pi pi-user'
+  },
+  {
+    label: 'Tanggal Input',
+    value: new Intl.DateTimeFormat('id-ID', {
+      dateStyle: 'medium',
+      timeStyle: 'short'
+    }).format(new Date()),
+    icon: 'pi pi-calendar'
+  }
+]);
 
 const handleSubmit = async () => {
   if (!amount.value || amount.value <= 0) {
@@ -76,16 +98,35 @@ const handleSubmit = async () => {
 </script>
 
 <template>
-  <div class="grid justify-content-center p-4">
-    <div class="col-12 md:col-8 lg:col-6">
-      <Panel header="Dashboard Operasional">
-        <p class="mb-4">
-          Selamat datang,
-          <strong>{{ authStore.user?.username }}</strong
-          >. Gunakan form ini untuk mencatat pemakaian.
+  <section class="page-shell">
+    <Card class="form-shell dashboard-card">
+      <template #title>
+        <div>
+          <p class="eyebrow mb-2">Dashboard Operasional</p>
+          <h2 class="m-0">Catat Pemakaian Lapangan</h2>
+        </div>
+      </template>
+
+      <template #content>
+        <p class="dashboard-subtitle">
+          Hadirkan bukti pemakaian dengan detail tanggal, jumlah liter, dan keterangan aktivitas.
+          Data otomatis tersinkron ke admin untuk approval stok.
         </p>
-        <form @submit.prevent="handleSubmit" class="p-fluid">
-          <div class="field">
+
+        <div class="meta-grid">
+          <article class="meta-tile" v-for="meta in userMeta" :key="meta.label">
+            <span class="meta-label">
+              <i :class="meta.icon" />
+              {{ meta.label }}
+            </span>
+            <div class="meta-value">{{ meta.value }}</div>
+          </article>
+        </div>
+
+        <Divider />
+
+        <form @submit.prevent="handleSubmit" class="form-stack">
+          <div>
             <label for="date">Tanggal Pemakaian</label>
             <Calendar
               id="date"
@@ -93,9 +134,11 @@ const handleSubmit = async () => {
               dateFormat="dd/mm/yy"
               showIcon
               showButtonBar
+              class="w-full"
             />
           </div>
-          <div class="field mt-4">
+
+          <div>
             <label for="amount">Jumlah Pemakaian (Liter)</label>
             <InputNumber
               id="amount"
@@ -104,26 +147,39 @@ const handleSubmit = async () => {
               mode="decimal"
               :minFractionDigits="2"
               :maxFractionDigits="2"
+              class="w-full"
             />
           </div>
-          <div class="field mt-4">
+
+          <div>
             <label for="description">Uraian Pemakaian (Wajib)</label>
             <Textarea
               id="description"
               v-model="description"
               rows="3"
+              autoResize
               placeholder="Contoh: Pemakaian untuk Kapal X"
+              class="w-full"
             />
           </div>
+
           <Button
             type="submit"
             label="Kirim Data Pemakaian"
             icon="pi pi-send"
-            class="mt-4 w-full"
+            class="w-full"
             :loading="loading"
           />
         </form>
-      </Panel>
-    </div>
-  </div>
+      </template>
+    </Card>
+  </section>
 </template>
+
+<style scoped>
+:deep(.p-inputtext),
+:deep(.p-inputnumber-input),
+:deep(.p-inputtextarea) {
+  width: 100%;
+}
+</style>
