@@ -24,7 +24,10 @@ app.use(router)
 app.use(PrimeVue, {
   ripple: true, // Efek klik 'ripple' yang bagus
   theme: {
-    preset: Lara
+    preset: Lara,
+    options: {
+      darkModeSelector: 'none' // Paksa gunakan skema warna terang
+    }
   }
 });
 
