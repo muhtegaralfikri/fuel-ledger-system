@@ -24,8 +24,8 @@ const router = createRouter({
     },
     // Rute Admin (Dilindungi)
     {
-      path: '/admin-dashboard',
-      name: 'admin-dashboard',
+      path: '/dashboard/admin',
+      name: 'dashboard-admin',
       component: AdminDashboard,
       meta: {
         requiresAuth: true,
@@ -34,8 +34,8 @@ const router = createRouter({
     },
     // Rute Operasional (Dilindungi)
     {
-      path: '/ops-dashboard',
-      name: 'ops-dashboard',
+      path: '/dashboard/operasional',
+      name: 'dashboard-operasional',
       component: OpsDashboard,
       meta: {
         requiresAuth: true,
@@ -69,9 +69,9 @@ router.beforeEach((to, from, next) => {
   if (to.meta?.allowedRoles && (!userRole || !to.meta.allowedRoles.includes(userRole))) {
     // Jika user sudah login tapi role tidak sesuai, arahkan ke dashboard sesuai role atau logout
     if (authStore.isAdmin) {
-      next('/admin-dashboard');
+      next('/dashboard/admin');
     } else if (authStore.isOperasional) {
-      next('/ops-dashboard');
+      next('/dashboard/operasional');
     } else {
       authStore.logout();
       next({ name: 'login' });

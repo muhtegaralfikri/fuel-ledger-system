@@ -20,14 +20,14 @@ const menuItems = ref([
   {
     label: 'Dashboard',
     command: () => {
-      router.push('/admin-dashboard');
+      router.push('/dashboard/admin');
     },
     visible: () => authStore.isAdmin,
   },
   {
     label: 'Dashboard',
     command: () => {
-      router.push('/ops-dashboard');
+      router.push('/dashboard/operasional');
     },
     visible: () => authStore.isOperasional,
   },

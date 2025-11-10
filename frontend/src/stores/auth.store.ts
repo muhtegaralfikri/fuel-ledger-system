@@ -54,11 +54,9 @@ export const useAuthStore = defineStore('auth', () => {
 
       // 4. Redirect ke halaman yang sesuai
       if (decoded.role === 'admin') {
-        // Nanti kita buat halaman /admin
-        router.push('/admin-dashboard'); 
+        router.push('/dashboard/admin'); 
       } else {
-        // Nanti kita buat halaman /operasional
-        router.push('/ops-dashboard');
+        router.push('/dashboard/operasional');
       }
       
     } catch (error) {
