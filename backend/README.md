@@ -27,22 +27,20 @@
 
 ## Database configuration
 
-By default the application expects a Postgres connection string through `DATABASE_URL`.  
-If you need to run it on XAMPP's MySQL / MariaDB instead, follow these steps:
+Backend ini sekarang menggunakan MySQL secara default (contoh: XAMPP).
 
-1. Start the MySQL service from the XAMPP control panel and create an empty database (e.g. `fuel_ledger`).
-2. Install the MySQL driver once (`npm install mysql2`) so TypeORM can talk to MySQL.
-3. Copy `.env` ➜ `.env.local` (or edit `.env` for development) and set:
+1. Jalankan layanan MySQL dari XAMPP dan buat database kosong, mis. `fuel_ledger`.
+2. Pastikan driver sudah terpasang (`npm install mysql2` di folder `backend/`).
+3. Isi variabel di `.env`:
    ```
    DB_TYPE=mysql
    DB_HOST=127.0.0.1
    DB_PORT=3306
    DB_USERNAME=root
-   DB_PASSWORD=your_xampp_password   # default is empty
+   DB_PASSWORD=your_xampp_password   # kosong jika belum di-set
    DB_NAME=fuel_ledger
    ```
-4. Leave `DATABASE_URL` for production Postgres deployments; the backend will automatically pick the MySQL settings when `DB_TYPE=mysql`.
-5. Run `npm run start:dev` – TypeORM's `synchronize:true` will auto-create the tables in your XAMPP database for local development.
+4. Jalankan `npm run start:dev`; TypeORM (synchronize:true) akan membuat tabel secara otomatis di database tersebut.
 
 ## Project setup
 
