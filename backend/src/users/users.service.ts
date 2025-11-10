@@ -4,25 +4,34 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { UserEntity } from './entities/user.entity';
 import { RoleEntity } from './entities/role.entity';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 // Tambahkan 'implements OnModuleInit'
 export class UsersService implements OnModuleInit { 
   // Tambahkan Logger untuk pesan yang rapi di konsol
   private readonly logger = new Logger(UsersService.name);
+  private readonly shouldSeed: boolean;
 
   constructor(
     @InjectRepository(UserEntity)
     private usersRepository: Repository<UserEntity>,
     @InjectRepository(RoleEntity)
     private rolesRepository: Repository<RoleEntity>,
-  ) {}
+    private readonly configService: ConfigService,
+  ) {
+    this.shouldSeed = this.configService.get<string>('SEED_DEFAULT_USERS', 'true') === 'true';
+  }
 
   /**
    * Method ini akan dipanggil otomatis oleh NestJS
    * saat UsersModule diinisialisasi.
    */
   async onModuleInit() {
+    if (!this.shouldSeed) {
+      this.logger.log('Seeding default users skipped (SEED_DEFAULT_USERS=false)');
+      return;
+    }
     await this.seedInitialData();
   }
 

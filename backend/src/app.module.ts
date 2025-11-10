@@ -10,12 +10,15 @@ import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { StockModule } from './stock/stock.module';
 
+const runtimeEnv = process.env.NODE_ENV ?? 'development';
+const envFiles = [`.env.${runtimeEnv}`, '.env'];
+
 @Module({
   imports: [
     // 1. Load file .env kita secara global
     ConfigModule.forRoot({
       isGlobal: true, // Membuat .env tersedia di semua module
-      envFilePath: '.env', // Tentukan path file .env kita
+      envFilePath: envFiles, // Urutan file env (mis. .env.development override .env)
     }),
 
     // 2. Konfigurasi TypeORM (Database)
@@ -25,10 +28,13 @@ import { StockModule } from './stock/stock.module';
       inject: [ConfigService],
       useFactory: (config: ConfigService) => {
         const type = (config.get<string>('DB_TYPE') || 'postgres').toLowerCase();
+        const synchronize = config.get<string>('DB_SYNCHRONIZE', 'true') === 'true';
+        const logging = config.get<string>('DB_LOGGING', 'false') === 'true';
 
         const baseConfig = {
           entities: [__dirname + '/**/*.entity{.ts,.js}'], // Lokasi file-file @Entity kita nanti
-          synchronize: true, // PENTING: ini akan otomatis update skema DB. Hanya untuk 'dev', jangan di 'prod'.
+          synchronize, // Kontrol lewat env agar produk aman
+          logging,
         };
 
         if (type === 'mysql') {
