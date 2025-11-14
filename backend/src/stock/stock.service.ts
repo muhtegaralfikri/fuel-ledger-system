@@ -2,7 +2,7 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, DeepPartial } from 'typeorm';
 import { TransactionEntity } from './entities/transaction.entity';
 import { CreateStockInDto } from './dto/create-stock-in.dto';
 import { CreateStockOutDto } from './dto/create-stock-out.dto';
@@ -155,12 +155,28 @@ export class StockService {
       throw new BadRequestException('Jumlah harus lebih dari 0');
     }
 
-    const newTransaction = this.transactionRepository.create({
+    let usageTimestamp: Date | undefined;
+    if (createStockOutDto.timestamp) {
+      usageTimestamp = new Date(createStockOutDto.timestamp);
+      if (Number.isNaN(usageTimestamp.getTime())) {
+        throw new BadRequestException('Tanggal pemakaian tidak valid.');
+      }
+    }
+
+    const transactionPayload: DeepPartial<TransactionEntity> = {
       type: 'OUT',
       amount: createStockOutDto.amount,
       description: createStockOutDto.description,
       user: { id: user.id }, // Relasi ke user yang menginput
-    });
+    };
+
+    if (usageTimestamp) {
+      transactionPayload.timestamp = usageTimestamp;
+    }
+
+    const newTransaction = this.transactionRepository.create(
+      transactionPayload,
+    );
 
     return this.transactionRepository.save(newTransaction);
   }

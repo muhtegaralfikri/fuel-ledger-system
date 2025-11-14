@@ -68,13 +68,23 @@ const handleSubmit = async () => {
 
   loading.value = true;
   try {
-    // NOTE: Backend kita belum menerima 'date'.
-    // Untuk saat ini, 'date' hanya untuk UI.
-    // Backend akan otomatis mencatat 'timestamp' saat ini.
-    await apiClient.post('/stock/out', {
+    const now = new Date();
+    const usageDate = date.value ? new Date(date.value) : new Date();
+    if (date.value) {
+      usageDate.setHours(
+        now.getHours(),
+        now.getMinutes(),
+        now.getSeconds(),
+        now.getMilliseconds(),
+      );
+    }
+    const payload = {
       amount: amount.value,
       description: description.value,
-    });
+      timestamp: usageDate.toISOString(),
+    };
+
+    await apiClient.post('/stock/out', payload);
 
     // Berhasil!
     toast.add({
