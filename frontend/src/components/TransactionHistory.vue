@@ -5,6 +5,7 @@ import Card from 'primevue/card';
 import Button from 'primevue/button';
 import DatePicker from 'primevue/datepicker';
 import Dropdown from 'primevue/dropdown';
+import InputText from 'primevue/inputtext';
 import * as XLSX from 'xlsx';
 import apiClient from '@/services/api';
 import { useStockStore } from '@/stores/stock.store';
@@ -150,7 +151,7 @@ const fetchHistory = async () => {
   errorMessage.value = null;
   try {
     const params: Record<string, unknown> = {
-      limit: props.limit,
+      limit: selectedPageSize.value,
       page: page.value,
     };
 
@@ -165,6 +166,10 @@ const fetchHistory = async () => {
 
     if (props.allowUserFilter && selectedUser.value) {
       params.userId = selectedUser.value;
+    }
+
+    if (searchTerm.value.trim()) {
+      params.q = searchTerm.value.trim();
     }
 
     const { data } = await apiClient.get<HistoryResponse>('/stock/history', {
@@ -219,22 +224,51 @@ const canApplyRange = computed(() => {
   return Boolean(start && end);
 });
 
-const applyDateFilter = () => {
-  if (!canApplyRange.value || !selectedRange.value) {
+let dateDebounce: ReturnType<typeof setTimeout> | null = null;
+const quickRange = ref<string>('');
+
+const quickRangeOptions = [
+  { label: '1 Hari', value: '1d' },
+  { label: '7 Hari', value: '7d' },
+  { label: '1 Bulan', value: '30d' },
+  { label: '3 Bulan', value: '90d' },
+  { label: '1 Tahun', value: '365d' },
+];
+
+const applyQuickRange = (value: string) => {
+  if (!value) {
+    selectedRange.value = null;
     return;
   }
-  const [start, end] = selectedRange.value as [Date, Date];
-  appliedRange.value = { start, end };
-  page.value = 1;
-  fetchHistory();
+  const days = Number(value.replace('d', ''));
+  const end = new Date();
+  const start = new Date();
+  start.setDate(end.getDate() - (days - 1));
+  selectedRange.value = [start, end];
 };
 
-const clearDateFilter = () => {
-  selectedRange.value = null;
-  appliedRange.value = null;
-  page.value = 1;
-  fetchHistory();
-};
+watch(
+  () => selectedRange.value,
+  (range) => {
+    if (dateDebounce) {
+      clearTimeout(dateDebounce);
+    }
+    dateDebounce = setTimeout(() => {
+      if (range && range[0] && range[1]) {
+        appliedRange.value = { start: range[0], end: range[1] };
+      } else {
+        appliedRange.value = null;
+        quickRange.value = '';
+      }
+      page.value = 1;
+      fetchHistory();
+    }, 400);
+  },
+);
+
+watch(quickRange, (value) => {
+  applyQuickRange(value);
+});
 
 const activeRangeLabel = computed(() => {
   if (!appliedRange.value) return '';
@@ -419,14 +453,74 @@ const resetFilters = () => {
   if (props.allowUserFilter) {
     selectedUser.value = null;
   }
-  clearDateFilter();
+  selectedPageSize.value = props.limit;
+  searchTerm.value = '';
+  selectedRange.value = null;
+  appliedRange.value = null;
+  quickRange.value = '';
   page.value = 1;
   fetchHistory();
 };
 
 const showResetAll = computed(
-  () => props.allowTypeFilter || props.allowUserFilter || Boolean(appliedRange.value),
+  () =>
+    props.allowTypeFilter ||
+    props.allowUserFilter ||
+    Boolean(appliedRange.value) ||
+    selectedPageSize.value !== props.limit ||
+    Boolean(searchTerm.value.trim()),
 );
+
+const pageSizeOptions = [10, 25, 50];
+const selectedPageSize = ref(props.limit);
+const searchTerm = ref('');
+let searchTimeout: ReturnType<typeof setTimeout> | null = null;
+
+watch(selectedPageSize, () => {
+  page.value = 1;
+  fetchHistory();
+});
+
+watch(
+  searchTerm,
+  (value) => {
+    if (searchTimeout) {
+      clearTimeout(searchTimeout);
+    }
+    searchTimeout = setTimeout(() => {
+      page.value = 1;
+      fetchHistory();
+    }, 400);
+  },
+  { flush: 'post' },
+);
+
+const filterSummary = computed(() => {
+  const summaries: string[] = [];
+  if (props.allowTypeFilter) {
+    summaries.push(`Jenis: ${
+      effectiveType.value === 'ALL'
+        ? 'Semua'
+        : effectiveType.value === 'IN'
+          ? 'Penambahan'
+          : 'Pemakaian'
+    }`);
+  }
+  if (props.allowUserFilter && selectedUser.value) {
+    const userLabel = userOptions.value.find((opt) => opt.value === selectedUser.value)?.label;
+    summaries.push(`Petugas: ${userLabel ?? 'Unknown'}`);
+  }
+  if (appliedRange.value) {
+    summaries.push(`Periode: ${activeRangeLabel.value}`);
+  }
+  if (selectedPageSize.value !== props.limit) {
+    summaries.push(`Jumlah/Halaman: ${selectedPageSize.value}`);
+  }
+  if (searchTerm.value.trim()) {
+    summaries.push(`Pencarian: "${searchTerm.value.trim()}"`);
+  }
+  return summaries;
+});
 </script>
 
 <template>
@@ -522,6 +616,15 @@ const showResetAll = computed(
               class="w-full"
             />
           </div>
+          <div class="filter-field search-filter">
+            <label class="filter-label" for="history-search">Cari deskripsi/petugas</label>
+            <InputText
+              id="history-search"
+              v-model="searchTerm"
+              class="w-full"
+              placeholder="Masukkan kata kunci"
+            />
+          </div>
           <div class="filter-field period-filter">
             <label class="filter-label" for="history-range">Periode</label>
             <DatePicker
@@ -535,22 +638,28 @@ const showResetAll = computed(
               placeholder="Pilih rentang tanggal"
             />
           </div>
+          <div class="filter-field quick-range-filter">
+            <label class="filter-label" for="history-quick-range">Rentang Cepat</label>
+            <Dropdown
+              id="history-quick-range"
+              v-model="quickRange"
+              :options="quickRangeOptions"
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Pilih rentang cepat"
+              class="w-full"
+            />
+          </div>
+          <div class="filter-field page-size-filter">
+            <label class="filter-label" for="history-page-size">Jumlah/Halaman</label>
+            <Dropdown
+              id="history-page-size"
+              v-model="selectedPageSize"
+              :options="pageSizeOptions"
+              class="w-full"
+            />
+          </div>
           <div class="filter-actions">
-            <Button
-              label="Terapkan"
-              size="small"
-              :disabled="!canApplyRange || loading"
-              @click="applyDateFilter"
-            />
-            <Button
-              v-if="appliedRange"
-              label="Reset"
-              size="small"
-              link
-              severity="secondary"
-              :disabled="loading"
-              @click="clearDateFilter"
-            />
             <Button
               v-if="showResetAll"
               label="Reset Semua"
@@ -565,6 +674,9 @@ const showResetAll = computed(
 
         <p v-if="appliedRange" class="active-range-label">
           Menampilkan transaksi antara {{ activeRangeLabel }}
+        </p>
+        <p v-if="filterSummary.length" class="active-filters">
+          Filter aktif: {{ filterSummary.join(', ') }}
         </p>
 
         <div class="history-table-wrapper">
@@ -739,6 +851,14 @@ const showResetAll = computed(
   flex: 1 1 200px;
 }
 
+.filter-field.search-filter {
+  flex: 1 1 240px;
+}
+
+.filter-field.page-size-filter {
+  flex: 0 0 180px;
+}
+
 .filter-label {
   display: block;
   font-size: 0.85rem;
@@ -755,6 +875,12 @@ const showResetAll = computed(
 .active-range-label {
   font-size: 0.85rem;
   color: var(--surface-500);
+  margin-bottom: 0.5rem;
+}
+
+.active-filters {
+  font-size: 0.85rem;
+  color: var(--surface-600);
   margin-bottom: 0.5rem;
 }
 
@@ -799,3 +925,6 @@ const showResetAll = computed(
   color: var(--surface-500);
 }
 </style>
+.filter-field.quick-range-filter {
+  flex: 0 0 200px;
+}

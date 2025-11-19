@@ -35,4 +35,10 @@ export class StockHistoryQueryDto extends PaginationDto {
   @IsOptional()
   @IsUUID()
   userId?: string;
+
+  @ApiPropertyOptional({
+    description: 'Pencarian teks bebas pada deskripsi atau nama petugas',
+  })
+  @IsOptional()
+  q?: string;
 }
