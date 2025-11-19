@@ -1,44 +1,63 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth.store';
 import logoSrc from '@/assets/logo.png';
 import Menubar from 'primevue/menubar';
-import Button from 'primevue/button';
 
 const router = useRouter();
 const authStore = useAuthStore();
 
-// Definisikan item menu.
-const menuItems = ref([
-  {
-    label: 'Beranda',
-    command: () => {
-      router.push('/');
+const menuItems = computed(() => {
+  const items = [
+    {
+      label: 'Beranda',
+      command: () => {
+        router.push('/');
+      },
     },
-  },
-  {
-    label: 'Dashboard',
-    command: () => {
-      router.push('/dashboard/admin');
-    },
-    visible: () => authStore.isAdmin,
-  },
-  {
-    label: 'Kelola User',
-    command: () => {
-      router.push('/dashboard/admin/users');
-    },
-    visible: () => authStore.isAdmin,
-  },
-  {
-    label: 'Dashboard',
-    command: () => {
-      router.push('/dashboard/operasional');
-    },
-    visible: () => authStore.isOperasional,
-  },
-]);
+  ];
+
+  if (authStore.isAdmin) {
+    items.push(
+      {
+        label: 'Dashboard Admin',
+        command: () => {
+          router.push('/dashboard/admin');
+        },
+      },
+      {
+        label: 'Kelola User',
+        command: () => {
+          router.push('/dashboard/admin/users');
+        },
+      },
+    );
+  }
+
+  if (authStore.isOperasional) {
+    items.push({
+      label: 'Dashboard Operasional',
+      command: () => {
+        router.push('/dashboard/operasional');
+      },
+    });
+  }
+
+  items.push(
+    authStore.isAuthenticated
+      ? {
+          label: 'Log Out',
+          command: handleLogout,
+        }
+      : {
+          label: 'Log In',
+          command: goToLogin,
+        },
+  );
+
+  return items;
+});
 
 // Navigasi ke Halaman Login
 const goToLogin = () => {
@@ -59,24 +78,6 @@ const handleLogout = async () => {
 
     <div class="nav-group">
       <Menubar :model="menuItems" class="nav-menu" />
-
-      <div class="nav-actions">
-        <Button
-          v-if="!authStore.isAuthenticated"
-          label="Log In"
-          icon="pi pi-sign-in"
-          class="p-button-text p-button-sm"
-          @click="goToLogin"
-        />
-
-        <Button
-          v-else
-          label="Log Out"
-          icon="pi pi-sign-out"
-          class="p-button-text p-button-sm p-button-danger"
-          @click="handleLogout"
-        />
-      </div>
     </div>
   </header>
 </template>
@@ -126,26 +127,4 @@ const handleLogout = async () => {
   position: relative;
 }
 
-.nav-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-/* Style untuk tombol Log In/Log Out kita biarkan di sini */
-:deep(.nav-actions .p-button),
-:deep(.nav-actions .p-button-label),
-:deep(.nav-actions .p-button-icon) {
-  color: #ffffff !important;
-}
-
-:deep(.nav-actions .p-button.p-button-text:hover) {
-  background: #ffffff;
-  color: #1e468c !important;
-}
-
-:deep(.nav-actions .p-button.p-button-text:hover .p-button-label),
-:deep(.nav-actions .p-button.p-button-text:hover .p-button-icon) {
-  color: #1e468c !important;
-}
 </style>

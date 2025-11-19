@@ -149,9 +149,10 @@ body {
   .p-menubar.nav-menu:not(.p-menubar-mobile-active)
   .p-menubar-item-link {
   background: transparent !important;
-  border-radius: 6px;
-  transition: background-color 0.2s, color 0.2s;
+  border-radius: 0;
+  transition: color 0.2s;
   box-shadow: none !important;
+  position: relative;
 }
 
 /* Target Teks di dalam link (desktop/tablet) */
@@ -182,11 +183,37 @@ body {
 /* --- HOVER STATE (desktop/tablet) --- */
 .navbar-shell
   .p-menubar.nav-menu:not(.p-menubar-mobile-active)
+  .p-menuitem-link::after,
+.navbar-shell
+  .p-menubar.nav-menu:not(.p-menubar-mobile-active)
+  .p-menubar-item-link::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 0.2rem;
+  width: 0;
+  height: 2px;
+  background: #ffffff;
+  transition: width 0.2s ease, left 0.2s ease, opacity 0.2s ease;
+  opacity: 0;
+}
+.navbar-shell
+  .p-menubar.nav-menu:not(.p-menubar-mobile-active)
   .p-menuitem-link:hover,
 .navbar-shell
   .p-menubar.nav-menu:not(.p-menubar-mobile-active)
   .p-menubar-item-link:hover {
-  background: #ffffff !important;
+  background: transparent !important;
+}
+.navbar-shell
+  .p-menubar.nav-menu:not(.p-menubar-mobile-active)
+  .p-menuitem-link:hover::after,
+.navbar-shell
+  .p-menubar.nav-menu:not(.p-menubar-mobile-active)
+  .p-menubar-item-link:hover::after {
+  width: 70%;
+  left: 15%;
+  opacity: 1;
 }
 .navbar-shell
   .p-menubar.nav-menu:not(.p-menubar-mobile-active)
@@ -196,7 +223,7 @@ body {
   .p-menubar.nav-menu:not(.p-menubar-mobile-active)
   .p-menubar-item-link:hover
   .p-menubar-item-label {
-  color: #1e468c !important;
+  color: #ffffff !important;
 }
 .navbar-shell
   .p-menubar.nav-menu:not(.p-menubar-mobile-active)
@@ -206,7 +233,7 @@ body {
   .p-menubar.nav-menu:not(.p-menubar-mobile-active)
   .p-menuitem-link:hover
   .p-menubar-item-icon {
-  color: #1e468c !important;
+  color: #ffffff !important;
 }
 
 /* Matikan efek 'tetap aktif' (desktop/tablet) */
@@ -249,10 +276,10 @@ body {
   .p-menubar.nav-menu.p-menubar-mobile-active
   .p-menubar-root-list {
   position: absolute;
-  top: calc(100% + 1rem);
-  left: 50%;
-  right: auto;
-  width: min(240px, calc(100vw - 2rem));
+  top: calc(100% + 0.5rem);
+  right: 0;
+  left: auto;
+  width: min(200px, calc(100vw - 2rem));
   background: #1e468c;
   border-radius: 0.85rem;
   box-shadow: 0 20px 45px -30px rgba(15, 23, 42, 0.85);
@@ -261,7 +288,7 @@ body {
   flex-direction: column;
   gap: 0;
   border: 1px solid rgba(255, 255, 255, 0.15);
-  transform: translateX(-50%);
+  transform: none;
   align-items: center;
   pointer-events: none;
 }
@@ -282,6 +309,7 @@ body {
   justify-content: center;
   text-align: center;
   pointer-events: auto;
+  position: relative;
 }
 
 .navbar-shell
@@ -307,8 +335,8 @@ body {
   .p-menubar.nav-menu.p-menubar-mobile-active
   .p-menubar-root-list
   .p-menubar-item-link:hover {
-  background: #ffffff !important;
-  color: #1e468c !important;
+  background: transparent !important;
+  color: #ffffff !important;
 }
 
 .navbar-shell
@@ -321,5 +349,48 @@ body {
   .p-menubar-root-list
   .p-menubar-item-link:hover
   .p-menuitem-icon {
-  color: #1e468c !important;
+  color: #ffffff !important;
+}
+
+.navbar-shell
+  .p-menubar.nav-menu.p-menubar-mobile-active
+  .p-menubar-root-list
+  .p-menubar-item-link::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 0.35rem;
+  width: 0;
+  height: 2px;
+  background: #ffffff;
+  transition: width 0.2s ease, left 0.2s ease, opacity 0.2s ease;
+  opacity: 0;
+}
+
+.navbar-shell
+  .p-menubar.nav-menu.p-menubar-mobile-active
+  .p-menubar-root-list
+  .p-menubar-item-link:hover::after {
+  width: 70%;
+  left: 15%;
+  opacity: 1;
+}
+.navbar-shell
+  .p-menubar.nav-menu:not(.p-menubar-mobile-active)
+  .p-menubar-item-content,
+.navbar-shell
+  .p-menubar.nav-menu:not(.p-menubar-mobile-active)
+  .p-menubar-item-content:hover {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.navbar-shell
+  .p-menubar.nav-menu.p-menubar-mobile-active
+  .p-menubar-item-content,
+.navbar-shell
+  .p-menubar.nav-menu.p-menubar-mobile-active
+  .p-menubar-item-content:hover {
+  background: transparent !important;
+  box-shadow: none !important;
 }
