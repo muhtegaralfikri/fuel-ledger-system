@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import Card from 'primevue/card';
 import Button from 'primevue/button';
 import DatePicker from 'primevue/datepicker';
+import SelectButton from 'primevue/selectbutton';
 import * as XLSX from 'xlsx';
 import apiClient from '@/services/api';
 import { useStockStore } from '@/stores/stock.store';
@@ -43,11 +44,13 @@ const props = withDefaults(
     description?: string;
     limit?: number;
     timeZone?: string;
+    allowTypeFilter?: boolean;
   }>(),
   {
     description: '',
     limit: 10,
     timeZone: MAKASSAR_TIME_ZONE,
+    allowTypeFilter: false,
   },
 );
 
@@ -70,6 +73,28 @@ const paginationMeta = ref<HistoryResponse['meta']>({
 type DateRangeValue = [Date | null, Date | null] | null;
 const selectedRange = ref<DateRangeValue>(null);
 const appliedRange = ref<{ start: Date; end: Date } | null>(null);
+
+type FilterType = 'ALL' | 'IN' | 'OUT';
+const selectedType = ref<FilterType>(props.type);
+
+const typeOptions = [
+  { label: 'Penambahan', value: 'IN' as FilterType },
+  { label: 'Pemakaian', value: 'OUT' as FilterType },
+  { label: 'Semua', value: 'ALL' as FilterType },
+];
+
+const effectiveType = computed<FilterType>(() =>
+  props.allowTypeFilter ? selectedType.value : props.type,
+);
+
+watch(
+  () => props.type,
+  (newType) => {
+    if (!props.allowTypeFilter) {
+      selectedType.value = newType;
+    }
+  },
+);
 
 const formatter = new Intl.NumberFormat('id-ID', {
   minimumFractionDigits: 0,
@@ -101,9 +126,12 @@ const fetchHistory = async () => {
   try {
     const params: Record<string, unknown> = {
       limit: props.limit,
-      type: props.type,
       page: page.value,
     };
+
+    if (effectiveType.value !== 'ALL') {
+      params.type = effectiveType.value;
+    }
 
     if (appliedRange.value) {
       params.startDate = startOfDayIso(appliedRange.value.start);
@@ -242,9 +270,11 @@ const exportToExcel = () => {
   const rows: (string | number)[][] = [];
   const titleRow =
     props.title ||
-    (props.type === 'IN'
+    (effectiveType.value === 'IN'
       ? 'Riwayat Penambahan Stok'
-      : 'Riwayat Pemakaian Bahan Bakar');
+      : effectiveType.value === 'OUT'
+        ? 'Riwayat Pemakaian Bahan Bakar'
+        : 'Riwayat Transaksi Stok');
 
   rows.push([titleRow]);
   rows.push([periodDescription]);
@@ -256,19 +286,27 @@ const exportToExcel = () => {
   rows.push(['Output', stockSummary?.todayStockOut ?? stockSummary?.todayUsage ?? 0]);
   rows.push(['Stok Akhir', stockSummary?.todayClosingStock ?? stockSummary?.currentStock ?? 0]);
   rows.push([]);
-  rows.push(['No', 'Tanggal', 'Petugas', 'Jumlah (L)', 'Keterangan']);
+  const headerRow = ['No', 'Tanggal', 'Petugas'];
+  if (effectiveType.value === 'ALL') {
+    headerRow.push('Jenis');
+  }
+  headerRow.push('Jumlah (L)', 'Keterangan');
+  rows.push(headerRow);
 
   let totalAmount = 0;
   history.value.forEach((item, index) => {
     const amount = Number(item.amount) || 0;
     totalAmount += amount;
-    rows.push([
+    const columns: (string | number)[] = [
       index + 1,
       formatDate(item.timestamp),
       item.user?.username || '-',
-      amount,
-      item.description || '-',
-    ]);
+    ];
+    if (effectiveType.value === 'ALL') {
+      columns.push(item.type === 'IN' ? 'IN' : 'OUT');
+    }
+    columns.push(amount, item.description || '-');
+    rows.push(columns);
   });
 
   rows.push([]);
@@ -278,9 +316,13 @@ const exportToExcel = () => {
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, 'Riwayat');
 
-  const filename = `riwayat-${
-    props.type === 'IN' ? 'tambah-stok' : 'pemakaian'
-  }-${new Date().toISOString().split('T')[0]}.xlsx`;
+  const filenameType =
+    effectiveType.value === 'IN'
+      ? 'tambah-stok'
+      : effectiveType.value === 'OUT'
+        ? 'pemakaian'
+        : 'semua';
+  const filename = `riwayat-${filenameType}-${new Date().toISOString().split('T')[0]}.xlsx`;
 
   XLSX.writeFile(workbook, filename);
 };
@@ -288,6 +330,13 @@ const exportToExcel = () => {
 defineExpose({
   refresh,
 });
+
+if (props.allowTypeFilter) {
+  watch(selectedType, () => {
+    page.value = 1;
+    fetchHistory();
+  });
+}
 </script>
 
 <template>
@@ -346,6 +395,20 @@ defineExpose({
 
       <div v-else>
         <div class="history-filters">
+          <div
+            v-if="props.allowTypeFilter"
+            class="filter-field type-filter"
+          >
+            <label class="filter-label" for="history-type">Jenis</label>
+            <SelectButton
+              id="history-type"
+              v-model="selectedType"
+              :options="typeOptions"
+              optionLabel="label"
+              optionValue="value"
+              :allowEmpty="false"
+            />
+          </div>
           <div class="filter-field">
             <label class="filter-label" for="history-range">Periode</label>
             <DatePicker
@@ -542,6 +605,10 @@ defineExpose({
 .filter-field {
   flex: 1 1 240px;
   min-width: 220px;
+}
+
+.filter-field.type-filter {
+  flex: 0 0 auto;
 }
 
 .filter-label {

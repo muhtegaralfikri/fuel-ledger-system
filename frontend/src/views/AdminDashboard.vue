@@ -152,6 +152,7 @@ const handleSubmit = async () => {
       <TransactionHistory
         ref="stockHistoryRef"
         type="IN"
+        :allow-type-filter="true"
         title="Riwayat Penambahan Stok"
         description="Daftar transaksi penambahan stok terbaru untuk mendukung audit trail tim."
       />
