@@ -21,7 +21,7 @@ const menuItems = computed(() => {
   if (authStore.isAdmin) {
     items.push(
       {
-        label: 'Dashboard Admin',
+        label: 'Dashboard',
         command: () => {
           router.push('/dashboard/admin');
         },
@@ -37,7 +37,7 @@ const menuItems = computed(() => {
 
   if (authStore.isOperasional) {
     items.push({
-      label: 'Dashboard Operasional',
+      label: 'Dashboard',
       command: () => {
         router.push('/dashboard/operasional');
       },
