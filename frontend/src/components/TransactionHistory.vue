@@ -838,25 +838,21 @@ const filterSummary = computed(() => {
   margin-bottom: 0.75rem;
 }
 
+@media screen and (min-width: 768px) {
+  .filter-field {
+    flex: 1 1 calc(33.33% - 1rem);
+    min-width: 220px;
+  }
+}
+
+@media screen and (max-width: 767px) {
+  .filter-field {
+    flex: 1 1 100%;
+  }
+}
+
 .filter-field {
-  flex: 1 1 240px;
-  min-width: 220px;
-}
-
-.filter-field.type-filter {
-  flex: 0 0 auto;
-}
-
-.filter-field.user-filter {
-  flex: 1 1 200px;
-}
-
-.filter-field.search-filter {
-  flex: 1 1 240px;
-}
-
-.filter-field.page-size-filter {
-  flex: 0 0 180px;
+  flex: 1 1 220px;
 }
 
 .filter-label {
