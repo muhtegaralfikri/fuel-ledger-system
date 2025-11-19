@@ -8,6 +8,7 @@ import LoginView from '../views/LoginView.vue';
 // Impor halaman dashboard baru
 import AdminDashboard from '../views/AdminDashboard.vue';
 import OpsDashboard from '../views/OpDashboard.vue';
+import UserManagementView from '../views/UserManagementView.vue';
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -27,6 +28,15 @@ const router = createRouter({
       path: '/dashboard/admin',
       name: 'dashboard-admin',
       component: AdminDashboard,
+      meta: {
+        requiresAuth: true,
+        allowedRoles: ['admin'],
+      },
+    },
+    {
+      path: '/dashboard/admin/users',
+      name: 'dashboard-admin-users',
+      component: UserManagementView,
       meta: {
         requiresAuth: true,
         allowedRoles: ['admin'],

@@ -1,10 +1,19 @@
 // /backend/src/users/users.service.ts
-import { Injectable, OnModuleInit, Logger } from '@nestjs/common'; 
+import {
+  Injectable,
+  OnModuleInit,
+  Logger,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common'; 
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { UserEntity } from './entities/user.entity';
 import { RoleEntity } from './entities/role.entity';
 import { ConfigService } from '@nestjs/config';
+import * as bcrypt from 'bcrypt';
+import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
 
 @Injectable()
 // Tambahkan 'implements OnModuleInit'
@@ -113,5 +122,111 @@ export class UsersService implements OnModuleInit {
       where: { id },
       relations: ['role'], // Kita juga ambil role-nya
     });
+  }
+
+  async findAll() {
+    const users = await this.usersRepository.find({
+      relations: ['role'],
+      order: { createdAt: 'DESC' },
+    });
+    return users.map((user) => this.toSafeUser(user));
+  }
+
+  async findOneSafe(id: string) {
+    const user = await this.findOneById(id);
+    if (!user) {
+      throw new NotFoundException('User tidak ditemukan');
+    }
+    return this.toSafeUser(user);
+  }
+
+  async createUser(createUserDto: CreateUserDto) {
+    await this.ensureUniqueEmail(createUserDto.email);
+    await this.ensureUniqueUsername(createUserDto.username);
+    const role = await this.getRoleOrFail(createUserDto.role);
+
+    const newUser = this.usersRepository.create({
+      username: createUserDto.username,
+      email: createUserDto.email,
+      password: createUserDto.password,
+      role,
+    });
+
+    const saved = await this.usersRepository.save(newUser);
+    return this.toSafeUser(saved);
+  }
+
+  async updateUser(id: string, updateUserDto: UpdateUserDto) {
+    const user = await this.findOneById(id);
+    if (!user) {
+      throw new NotFoundException('User tidak ditemukan');
+    }
+
+    if (
+      updateUserDto.email &&
+      updateUserDto.email.toLowerCase() !== user.email.toLowerCase()
+    ) {
+      await this.ensureUniqueEmail(updateUserDto.email);
+      user.email = updateUserDto.email;
+    }
+
+    if (
+      updateUserDto.username &&
+      updateUserDto.username.toLowerCase() !== user.username.toLowerCase()
+    ) {
+      await this.ensureUniqueUsername(updateUserDto.username);
+      user.username = updateUserDto.username;
+    }
+
+    if (updateUserDto.role) {
+      user.role = await this.getRoleOrFail(updateUserDto.role);
+    }
+
+    if (updateUserDto.password) {
+      user.password = await bcrypt.hash(updateUserDto.password, 10);
+    }
+
+    const updated = await this.usersRepository.save(user);
+    return this.toSafeUser(updated);
+  }
+
+  async removeUser(id: string) {
+    const result = await this.usersRepository.delete(id);
+    if (!result.affected) {
+      throw new NotFoundException('User tidak ditemukan');
+    }
+    return { success: true };
+  }
+
+  private async ensureUniqueEmail(email: string) {
+    const existing = await this.usersRepository.findOne({ where: { email } });
+    if (existing) {
+      throw new BadRequestException('Email sudah digunakan');
+    }
+  }
+
+  private async ensureUniqueUsername(username: string) {
+    const existing = await this.usersRepository.findOne({ where: { username } });
+    if (existing) {
+      throw new BadRequestException('Username sudah digunakan');
+    }
+  }
+
+  private async getRoleOrFail(roleName: 'admin' | 'operasional') {
+    const role = await this.rolesRepository.findOne({ where: { name: roleName } });
+    if (!role) {
+      throw new BadRequestException(`Role ${roleName} belum tersedia`);
+    }
+    return role;
+  }
+
+  private toSafeUser(user: UserEntity) {
+    return {
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      role: user.role?.name,
+      createdAt: user.createdAt,
+    };
   }
 }

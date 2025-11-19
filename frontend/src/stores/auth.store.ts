@@ -2,105 +2,166 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
-import apiClient from '@/services/api'; // API client kita
-import { jwtDecode } from 'jwt-decode'; // Library yang baru kita install
+import apiClient from '@/services/api';
+import { jwtDecode } from 'jwt-decode';
 
-// Definisikan tipe data user dari payload token
 interface UserPayload {
   id: string;
   username: string;
+  email: string;
   role: 'admin' | 'operasional';
+}
+
+interface AuthSessionResponse {
+  accessToken: string;
+  refreshToken: string;
+  user: UserPayload;
+  expiresIn: number;
 }
 
 export const useAuthStore = defineStore('auth', () => {
   const router = useRouter();
-
-  // --- STATE ---
-  // Coba ambil token dari localStorage saat pertama kali load
   const token = ref<string | null>(localStorage.getItem('token'));
-  const user = ref<UserPayload | null>(null);
+  const refreshToken = ref<string | null>(localStorage.getItem('refreshToken'));
+  const cachedUser = localStorage.getItem('user');
+  const user = ref<UserPayload | null>(cachedUser ? JSON.parse(cachedUser) : null);
 
-  // --- GETTERS (Computed) ---
   const isAuthenticated = computed(() => !!token.value);
   const isAdmin = computed(() => user.value?.role === 'admin');
   const isOperasional = computed(() => user.value?.role === 'operasional');
 
-  // --- ACTIONS ---
+  if (token.value) {
+    setAuthHeader(token.value);
+  }
 
-  /**
-   * Fungsi untuk Login
-   */
+  function setAuthHeader(accessToken: string | null) {
+    if (accessToken) {
+      apiClient.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
+    } else {
+      delete apiClient.defaults.headers.common['Authorization'];
+    }
+  }
+
+  function persistUser(profile: UserPayload | null) {
+    user.value = profile;
+    if (profile) {
+      localStorage.setItem('user', JSON.stringify(profile));
+    } else {
+      localStorage.removeItem('user');
+    }
+  }
+
+  function persistTokens(accessToken: string, refreshTokenValue: string) {
+    token.value = accessToken;
+    refreshToken.value = refreshTokenValue;
+    localStorage.setItem('token', accessToken);
+    localStorage.setItem('refreshToken', refreshTokenValue);
+    setAuthHeader(accessToken);
+  }
+
+  function clearSession() {
+    token.value = null;
+    refreshToken.value = null;
+    localStorage.removeItem('token');
+    localStorage.removeItem('refreshToken');
+    persistUser(null);
+    setAuthHeader(null);
+  }
+
   async function login(email: string, password: string) {
     try {
-      const response = await apiClient.post<{ access_token: string }>(
-        '/auth/login',
-        { email, password },
-      );
+      const { data } = await apiClient.post<AuthSessionResponse>('/auth/login', {
+        email,
+        password,
+      });
+      applySession(data);
 
-      const accessToken = response.data.access_token;
-      
-      // 1. Simpan token di state & localStorage
-      localStorage.setItem('token', accessToken);
-      token.value = accessToken;
-
-      // 2. Decode token untuk dapat data user
-      const decoded = jwtDecode<UserPayload>(accessToken);
-      user.value = decoded;
-
-      // 3. Set header default Axios untuk request berikutnya
-      apiClient.defaults.headers.common[
-        'Authorization'
-      ] = `Bearer ${accessToken}`;
-
-      // 4. Redirect ke halaman yang sesuai
-      if (decoded.role === 'admin') {
-        router.push('/dashboard/admin'); 
+      if (data.user.role === 'admin') {
+        router.push('/dashboard/admin');
       } else {
         router.push('/dashboard/operasional');
       }
-      
     } catch (error) {
       console.error('Login failed:', error);
-      // Lempar error agar bisa ditangkap oleh komponen LoginView
       throw new Error('Email atau password salah.');
     }
   }
 
-  /**
-   * Fungsi untuk Logout
-   */
-  function logout() {
-    // 1. Hapus data dari state & localStorage
-    localStorage.removeItem('token');
-    token.value = null;
-    user.value = null;
-
-    // 2. Hapus header default Axios
-    delete apiClient.defaults.headers.common['Authorization'];
-
-    // 3. Redirect ke Halaman Beranda
-    router.push('/');
+  async function logout() {
+    try {
+      if (token.value) {
+        await apiClient.post('/auth/logout');
+      }
+    } catch (error) {
+      // Jika logout gagal cukup bersihkan sisi klien
+      console.warn('Failed to revoke tokens on logout', error);
+    }
+    clearSession();
+    router.push('/login');
   }
 
-  /**
-   * Fungsi untuk cek token saat app load
-   * (Nanti kita panggil di App.vue)
-   */
-  function checkAuth() {
-    if (token.value) {
+  async function refreshSession() {
+    if (!refreshToken.value) {
+      throw new Error('Refresh token tidak tersedia');
+    }
+    const { data } = await apiClient.post<AuthSessionResponse>('/auth/refresh', {
+      refreshToken: refreshToken.value,
+    });
+    applySession(data);
+    return data;
+  }
+
+  function isTokenExpired(accessToken: string) {
+    try {
+      const decoded = jwtDecode<{ exp?: number }>(accessToken);
+      if (!decoded.exp) return false;
+      const expiresAt = decoded.exp * 1000;
+      // Grace period 5 detik supaya request tidak keburu 401
+      return Date.now() + 5000 >= expiresAt;
+    } catch (error) {
+      return true;
+    }
+  }
+
+  async function checkAuth() {
+    if (!token.value) {
+      return;
+    }
+
+    if (isTokenExpired(token.value)) {
       try {
-        const decoded = jwtDecode<UserPayload>(token.value);
-        user.value = decoded;
-        apiClient.defaults.headers.common[
-          'Authorization'
-        ] = `Bearer ${token.value}`;
+        await refreshSession();
+        return;
       } catch (error) {
-        // Token invalid atau expired
-        logout();
+        clearSession();
+        return;
+      }
+    }
+
+    if (!user.value) {
+      try {
+        const { data } = await apiClient.get<UserPayload>('/auth/me');
+        persistUser(data);
+      } catch (error) {
+        if (refreshToken.value) {
+          try {
+            await refreshSession();
+            return;
+          } catch (_) {
+            clearSession();
+            return;
+          }
+        }
+        clearSession();
       }
     }
   }
-  
+
+  function applySession(session: AuthSessionResponse) {
+    persistTokens(session.accessToken, session.refreshToken);
+    persistUser(session.user);
+  }
+
   return {
     token,
     user,
@@ -110,5 +171,6 @@ export const useAuthStore = defineStore('auth', () => {
     login,
     logout,
     checkAuth,
+    refreshSession,
   };
 });

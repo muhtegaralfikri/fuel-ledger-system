@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onBeforeUnmount } from 'vue';
+import { onMounted, onBeforeUnmount, watch } from 'vue';
 import { RouterView } from 'vue-router';
 import Navbar from './components/Navbar.vue';
 import { useAuthStore } from './stores/auth.store';
@@ -10,13 +10,25 @@ const authStore = useAuthStore();
 const stockStore = useStockStore();
 const currentYear = new Date().getFullYear();
 
+const stopAuthWatcher = watch(
+  () => authStore.isAuthenticated,
+  (isAuthenticated) => {
+    if (isAuthenticated) {
+      stockStore.startPolling();
+    } else {
+      stockStore.stopPolling();
+    }
+  },
+  { immediate: true },
+);
+
 onMounted(() => {
   authStore.checkAuth();
-  stockStore.startPolling();
 });
 
 onBeforeUnmount(() => {
   stockStore.stopPolling();
+  stopAuthWatcher();
 });
 </script>
 

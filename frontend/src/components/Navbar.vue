@@ -25,6 +25,13 @@ const menuItems = ref([
     visible: () => authStore.isAdmin,
   },
   {
+    label: 'Kelola User',
+    command: () => {
+      router.push('/dashboard/admin/users');
+    },
+    visible: () => authStore.isAdmin,
+  },
+  {
     label: 'Dashboard',
     command: () => {
       router.push('/dashboard/operasional');
@@ -39,8 +46,8 @@ const goToLogin = () => {
 };
 
 // Panggil action logout dari store
-const handleLogout = () => {
-  authStore.logout();
+const handleLogout = async () => {
+  await authStore.logout();
 };
 </script>
 

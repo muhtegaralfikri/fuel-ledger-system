@@ -28,7 +28,8 @@ const envFiles = [`.env.${runtimeEnv}`, '.env'];
       inject: [ConfigService],
       useFactory: (config: ConfigService) => {
         const type = (config.get<string>('DB_TYPE') || 'postgres').toLowerCase();
-        const synchronize = config.get<string>('DB_SYNCHRONIZE', 'true') === 'true';
+        const synchronize =
+          config.get<string>('DB_SYNCHRONIZE', 'false') === 'true';
         const logging = config.get<string>('DB_LOGGING', 'false') === 'true';
 
         const baseConfig = {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue';
+import { computed, onMounted, onUnmounted } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useStockStore } from '@/stores/stock.store';
 import Card from 'primevue/card';
@@ -22,8 +22,14 @@ const {
 } = storeToRefs(stockStore);
 
 onMounted(() => {
+  stockStore.fetchSummary();
   stockStore.fetchTrend(7);
   stockStore.fetchInOutTrend(7);
+  stockStore.startPolling();
+});
+
+onUnmounted(() => {
+  stockStore.stopPolling();
 });
 
 const formatLiters = (value?: number | null) => {
