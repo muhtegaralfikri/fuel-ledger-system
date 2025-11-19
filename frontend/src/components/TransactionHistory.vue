@@ -4,7 +4,7 @@ import { storeToRefs } from 'pinia';
 import Card from 'primevue/card';
 import Button from 'primevue/button';
 import DatePicker from 'primevue/datepicker';
-import SelectButton from 'primevue/selectbutton';
+import Dropdown from 'primevue/dropdown';
 import * as XLSX from 'xlsx';
 import apiClient from '@/services/api';
 import { useStockStore } from '@/stores/stock.store';
@@ -45,12 +45,14 @@ const props = withDefaults(
     limit?: number;
     timeZone?: string;
     allowTypeFilter?: boolean;
+    allowUserFilter?: boolean;
   }>(),
   {
     description: '',
     limit: 10,
     timeZone: MAKASSAR_TIME_ZONE,
     allowTypeFilter: false,
+    allowUserFilter: false,
   },
 );
 
@@ -86,6 +88,29 @@ const typeOptions = [
 const effectiveType = computed<FilterType>(() =>
   props.allowTypeFilter ? selectedType.value : props.type,
 );
+
+const showTypeColumn = computed(() => props.allowTypeFilter && selectedType.value === 'ALL');
+
+interface UserOption {
+  label: string;
+  value: string;
+  role: 'admin' | 'operasional' | string;
+}
+
+const userOptions = ref<UserOption[]>([]);
+const availableUserOptions = computed(() => {
+  if (!props.allowUserFilter) {
+    return [];
+  }
+  if (effectiveType.value === 'IN') {
+    return userOptions.value.filter((user) => user.role === 'admin');
+  }
+  if (effectiveType.value === 'OUT') {
+    return userOptions.value.filter((user) => user.role === 'operasional');
+  }
+  return userOptions.value;
+});
+const selectedUser = ref<string | null>(null);
 
 watch(
   () => props.type,
@@ -138,6 +163,10 @@ const fetchHistory = async () => {
       params.endDate = endOfDayIso(appliedRange.value.end);
     }
 
+    if (props.allowUserFilter && selectedUser.value) {
+      params.userId = selectedUser.value;
+    }
+
     const { data } = await apiClient.get<HistoryResponse>('/stock/history', {
       params,
     });
@@ -159,7 +188,28 @@ const fetchHistory = async () => {
   }
 };
 
-onMounted(fetchHistory);
+const loadUsers = async () => {
+  if (!props.allowUserFilter) return;
+  try {
+    const { data } = await apiClient.get<{ id: string; username: string; email: string }[]>(
+      '/users',
+    );
+    userOptions.value = data.map((user: any) => ({
+      label: user.username || user.email,
+      value: user.id,
+      role: user.role,
+    }));
+  } catch (error) {
+    console.error('Failed to load users', error);
+  }
+};
+
+onMounted(async () => {
+  if (props.allowUserFilter) {
+    await loadUsers();
+  }
+  fetchHistory();
+});
 
 const refresh = () => fetchHistory();
 
@@ -310,7 +360,12 @@ const exportToExcel = () => {
   });
 
   rows.push([]);
-  rows.push(['', 'Total', '', totalAmount, '']);
+  const totalRow: (string | number)[] = ['', 'Total', ''];
+  if (effectiveType.value === 'ALL') {
+    totalRow.push('');
+  }
+  totalRow.push(totalAmount, '');
+  rows.push(totalRow);
 
   const worksheet = XLSX.utils.aoa_to_sheet(rows);
   const workbook = XLSX.utils.book_new();
@@ -337,6 +392,41 @@ if (props.allowTypeFilter) {
     fetchHistory();
   });
 }
+
+if (props.allowUserFilter) {
+  watch(selectedUser, () => {
+    page.value = 1;
+    fetchHistory();
+  });
+
+  watch(
+    () => availableUserOptions.value,
+    (options) => {
+      if (!selectedUser.value) return;
+      const stillExists = options.some((opt) => opt.value === selectedUser.value);
+      if (!stillExists) {
+        selectedUser.value = null;
+      }
+    },
+    { deep: true },
+  );
+}
+
+const resetFilters = () => {
+  if (props.allowTypeFilter) {
+    selectedType.value = props.type;
+  }
+  if (props.allowUserFilter) {
+    selectedUser.value = null;
+  }
+  clearDateFilter();
+  page.value = 1;
+  fetchHistory();
+};
+
+const showResetAll = computed(
+  () => props.allowTypeFilter || props.allowUserFilter || Boolean(appliedRange.value),
+);
 </script>
 
 <template>
@@ -391,6 +481,13 @@ if (props.allowTypeFilter) {
       <div v-else-if="!history.length" class="history-state empty">
         <i class="pi pi-inbox" aria-hidden="true" />
         <span>Belum ada riwayat untuk jenis transaksi ini.</span>
+        <Button
+          v-if="showResetAll"
+          label="Reset filter"
+          link
+          size="small"
+          @click="resetFilters"
+        />
       </div>
 
       <div v-else>
@@ -400,16 +497,32 @@ if (props.allowTypeFilter) {
             class="filter-field type-filter"
           >
             <label class="filter-label" for="history-type">Jenis</label>
-            <SelectButton
+            <Dropdown
               id="history-type"
               v-model="selectedType"
               :options="typeOptions"
               optionLabel="label"
               optionValue="value"
-              :allowEmpty="false"
+              class="w-full"
             />
           </div>
-          <div class="filter-field">
+          <div
+            v-if="props.allowUserFilter"
+            class="filter-field user-filter"
+          >
+            <label class="filter-label" for="history-user">Petugas</label>
+            <Dropdown
+              id="history-user"
+              v-model="selectedUser"
+              :options="userOptions"
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Semua petugas"
+              showClear
+              class="w-full"
+            />
+          </div>
+          <div class="filter-field period-filter">
             <label class="filter-label" for="history-range">Periode</label>
             <DatePicker
               id="history-range"
@@ -438,6 +551,15 @@ if (props.allowTypeFilter) {
               :disabled="loading"
               @click="clearDateFilter"
             />
+            <Button
+              v-if="showResetAll"
+              label="Reset Semua"
+              size="small"
+              link
+              severity="secondary"
+              :disabled="loading"
+              @click="resetFilters"
+            />
           </div>
         </div>
 
@@ -452,6 +574,7 @@ if (props.allowTypeFilter) {
                 <th>No</th>
                 <th>Tanggal</th>
                 <th>Petugas</th>
+                <th v-if="showTypeColumn">Jenis</th>
                 <th>Jumlah (L)</th>
                 <th>Keterangan</th>
               </tr>
@@ -461,6 +584,7 @@ if (props.allowTypeFilter) {
                 <td>{{ index + 1 }}</td>
                 <td>{{ formatDate(item.timestamp) }}</td>
                 <td>{{ item.user?.username || '-' }}</td>
+                <td v-if="showTypeColumn">{{ item.type === 'IN' ? 'IN' : 'OUT' }}</td>
                 <td class="amount-cell">
                   {{ formatter.format(item.amount) }}
                 </td>
@@ -609,6 +733,10 @@ if (props.allowTypeFilter) {
 
 .filter-field.type-filter {
   flex: 0 0 auto;
+}
+
+.filter-field.user-filter {
+  flex: 1 1 200px;
 }
 
 .filter-label {

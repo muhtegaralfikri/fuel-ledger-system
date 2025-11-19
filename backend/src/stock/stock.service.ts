@@ -185,7 +185,7 @@ export class StockService {
     historyQueryDto: StockHistoryQueryDto,
     user: AuthenticatedUser,
   ) {
-    const { page = 1, limit = 10, type, startDate, endDate } = historyQueryDto;
+    const { page = 1, limit = 10, type, startDate, endDate, userId } = historyQueryDto;
     const skip = (page - 1) * limit; // Kalkulasi 'offset'
 
     const enforcedType = user.role === 'operasional' ? 'OUT' : type;
@@ -199,6 +199,10 @@ export class StockService {
 
     if (enforcedType) {
       qb.andWhere('tx.type = :type', { type: enforcedType });
+    }
+
+    if (userId && user.role === 'admin') {
+      qb.andWhere('user.id = :userId', { userId });
     }
 
     const parsedStart = startDate ? new Date(startDate) : null;

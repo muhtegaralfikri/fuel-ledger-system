@@ -1,6 +1,6 @@
 // /backend/src/stock/dto/history-query.dto.ts
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsDateString, IsIn, IsOptional } from 'class-validator';
+import { IsDateString, IsIn, IsOptional, IsUUID } from 'class-validator';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 
 export class StockHistoryQueryDto extends PaginationDto {
@@ -27,4 +27,12 @@ export class StockHistoryQueryDto extends PaginationDto {
   @IsOptional()
   @IsDateString()
   endDate?: string;
+
+  @ApiPropertyOptional({
+    description: 'Filter berdasarkan ID petugas (hanya admin)',
+    example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+  })
+  @IsOptional()
+  @IsUUID()
+  userId?: string;
 }
