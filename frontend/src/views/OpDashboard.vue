@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useAuthStore } from '@/stores/auth.store';
 import { useStockStore } from '@/stores/stock.store';
 import apiClient from '@/services/api';
@@ -24,6 +24,25 @@ const description = ref('');
 const loading = ref(false);
 const usageHistoryRef = ref<InstanceType<typeof TransactionHistory> | null>(null);
 
+const formatLiters = (value?: number | null) => {
+  if (value === undefined || value === null) {
+    return 'Belum ada data';
+  }
+  return `${value.toLocaleString('id-ID', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  })} L`;
+};
+
+const currentStock = computed(() => stockStore.summary?.currentStock ?? null);
+const stockUpdatedAt = computed(() => stockStore.summary ? new Date().toLocaleTimeString('id-ID') : null);
+const stockStatusClass = computed(() => {
+  const value = currentStock.value ?? 0;
+  if (value <= 0) return 'text-red-500';
+  if (value < 500) return 'text-orange-500';
+  return 'text-green-600';
+});
+
 const userMeta = computed(() => [
   {
     label: 'Hak Akses',
@@ -45,6 +64,10 @@ const userMeta = computed(() => [
     icon: 'pi pi-calendar'
   }
 ]);
+
+onMounted(() => {
+  stockStore.fetchSummary();
+});
 
 const handleSubmit = async () => {
   if (!amount.value || amount.value <= 0) {
@@ -139,6 +162,17 @@ const handleSubmit = async () => {
               </span>
               <div class="meta-value">{{ meta.value }}</div>
             </article>
+            <article class="meta-tile stock-balance">
+              <span class="meta-label">
+                <i class="pi pi-database" /> Sisa Stok Lapangan
+              </span>
+              <div class="meta-value" :class="stockStatusClass">
+                {{ formatLiters(currentStock) }}
+              </div>
+              <small class="meta-note" v-if="stockUpdatedAt">
+                Pembaruan terakhir {{ stockUpdatedAt }}
+              </small>
+            </article>
           </div>
 
           <Divider />
@@ -206,4 +240,15 @@ const handleSubmit = async () => {
 :deep(.p-inputtextarea) {
   width: 100%;
 }
+
+.stock-balance .meta-value {
+  font-size: 1.5rem;
+}
+
+.meta-note {
+  display: block;
+  margin-top: 0.35rem;
+  color: var(--surface-500);
+}
+
 </style>
