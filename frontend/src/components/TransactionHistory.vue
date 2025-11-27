@@ -4,7 +4,7 @@ import { storeToRefs } from 'pinia';
 import Card from 'primevue/card';
 import Button from 'primevue/button';
 import DatePicker from 'primevue/datepicker';
-import Dropdown from 'primevue/dropdown';
+import Select from 'primevue/select';
 import InputText from 'primevue/inputtext';
 import * as XLSX from 'xlsx';
 import apiClient from '@/services/api';
@@ -591,7 +591,7 @@ const filterSummary = computed(() => {
             class="filter-field type-filter"
           >
             <label class="filter-label" for="history-type">Jenis</label>
-            <Dropdown
+            <Select
               id="history-type"
               v-model="selectedType"
               :options="typeOptions"
@@ -605,7 +605,7 @@ const filterSummary = computed(() => {
             class="filter-field user-filter"
           >
             <label class="filter-label" for="history-user">Petugas</label>
-            <Dropdown
+            <Select
               id="history-user"
               v-model="selectedUser"
               :options="userOptions"
@@ -630,17 +630,19 @@ const filterSummary = computed(() => {
             <DatePicker
               id="history-range"
               v-model="selectedRange"
+              class="w-full"
               selectionMode="range"
               dateFormat="dd M yy"
               :maxDate="new Date()"
               :disabled="loading"
               showButtonBar
+              inputClass="w-full"
               placeholder="Pilih rentang tanggal"
             />
           </div>
           <div class="filter-field quick-range-filter">
             <label class="filter-label" for="history-quick-range">Rentang Cepat</label>
-            <Dropdown
+            <Select
               id="history-quick-range"
               v-model="quickRange"
               :options="quickRangeOptions"
@@ -652,7 +654,7 @@ const filterSummary = computed(() => {
           </div>
           <div class="filter-field page-size-filter">
             <label class="filter-label" for="history-page-size">Jumlah/Halaman</label>
-            <Dropdown
+            <Select
               id="history-page-size"
               v-model="selectedPageSize"
               :options="pageSizeOptions"
@@ -920,7 +922,14 @@ const filterSummary = computed(() => {
   padding: 0.35rem 0.5rem;
   color: var(--surface-500);
 }
-</style>
+
 .filter-field.quick-range-filter {
-  flex: 0 0 200px;
+  flex: 1 1 220px;
 }
+
+@media screen and (max-width: 767px) {
+  .filter-field.quick-range-filter {
+    flex: 1 1 100%;
+  }
+}
+</style>

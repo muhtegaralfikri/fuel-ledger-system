@@ -92,6 +92,7 @@ const handleLogin = async () => {
                 :feedback="false"
                 toggleMask
                 class="w-full"
+                inputClass="w-full"
               />
             </div>
 
