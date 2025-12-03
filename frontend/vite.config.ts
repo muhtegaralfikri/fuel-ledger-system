@@ -17,4 +17,9 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+
+  // Jangan hapus isi folder outDir (dist) agar file khusus hosting seperti .user.ini tidak dihapus
+  build: {
+    emptyOutDir: false,
+  },
 })
