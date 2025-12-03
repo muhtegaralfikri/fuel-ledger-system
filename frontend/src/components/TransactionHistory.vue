@@ -551,7 +551,7 @@ const exportToExcel = () => {
         : 'semua';
   const filename = `riwayat-${filenameType}-${new Date().toISOString().split('T')[0]}.xlsx`;
 
-  XLSX.writeFile(workbook, filename);
+  XLSX.writeFileXLSX(workbook, filename);
 };
 
 defineExpose({

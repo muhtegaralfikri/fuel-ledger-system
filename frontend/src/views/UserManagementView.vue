@@ -3,7 +3,7 @@ import { reactive, ref, onMounted } from 'vue';
 import Card from 'primevue/card';
 import InputText from 'primevue/inputtext';
 import Password from 'primevue/password';
-import Dropdown from 'primevue/dropdown';
+import Select from 'primevue/select';
 import Button from 'primevue/button';
 import Message from 'primevue/message';
 import Skeleton from 'primevue/skeleton';
@@ -243,7 +243,7 @@ onMounted(() => {
             </div>
             <div class="form-field">
               <label for="create-role">Peran</label>
-              <Dropdown
+              <Select
                 id="create-role"
                 v-model="createForm.role"
                 :options="roleOptions"
@@ -378,7 +378,7 @@ onMounted(() => {
         </div>
         <div>
           <label for="edit-role">Peran</label>
-          <Dropdown
+          <Select
             id="edit-role"
             v-model="editForm.role"
             :options="roleOptions"
